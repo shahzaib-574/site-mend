@@ -33,12 +33,13 @@ special-purpose translation, protocol, and anycast ranges that are not normal
 website scan destinations. IANA registry changes require a policy and regression
 test review before release.
 
-## Required invariants for the crawler PR
+## HTTP crawler invariants
 
 Admission is necessary but is not enough to stop DNS rebinding on its own. The
-future HTTP worker must:
+HTTP worker now enforces the connection, redirect, robots, and resource invariants
+below in code; deployment isolation remains an operator responsibility:
 
-1. run in an isolated worker without access to application credentials or the
+1. run as a separate worker without access to application credentials or the
    private network;
 2. connect only to an address returned by the latest admission check, while using
    the admitted hostname for TLS certificate and Host-header validation;
@@ -55,6 +56,10 @@ future HTTP worker must:
 
 If address pinning is unavailable in a selected HTTP client, that client cannot
 be used for hostile scan targets.
+
+The implementation and deployment gate are documented in
+[`crawler-worker.md`](crawler-worker.md). Public intake remains disabled until
+that deployment gate is verified.
 
 ## Error handling and privacy
 

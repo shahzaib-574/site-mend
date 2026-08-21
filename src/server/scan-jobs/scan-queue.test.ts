@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { BullMqScanQueue, type ScanJobPayload } from "./scan-queue";
+import {
+  BullMqScanQueue,
+  parseScanJobPayload,
+  type ScanJobPayload,
+} from "./scan-queue";
 
 const payload: ScanJobPayload = {
   requestedAt: "2026-08-21T12:00:00.000Z",
@@ -13,6 +17,13 @@ const payload: ScanJobPayload = {
 };
 
 describe("BullMqScanQueue", () => {
+  it("exports the exact queue payload validator for workers", () => {
+    expect(parseScanJobPayload(payload)).toBe(payload);
+    expect(() =>
+      parseScanJobPayload({ ...payload, unexpected: "field" }),
+    ).toThrow("invalid job data");
+  });
+
   it("adds a bounded job using the public scan ID", async () => {
     const add = vi.fn(async () => ({ id: payload.scanId }));
     const queue = new BullMqScanQueue({ add, getJob: vi.fn() } as never);

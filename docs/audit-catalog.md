@@ -48,3 +48,12 @@ does not fetch pages. Its target threat model, queue-producer privacy controls, 
 required crawler invariants are documented in
 [`security/scan-admission.md`](security/scan-admission.md) and
 [`security/scan-intake.md`](security/scan-intake.md).
+
+## Homepage crawl evidence boundary
+
+The standalone worker can produce schema-version `1` evidence for robots access,
+final status, sanitized redirect locations, accepted media type, response bytes,
+and a SHA-256 body digest. It never returns the robots file or homepage body.
+This evidence is an input to future versioned audit rules; it is not itself a
+finding and must not change a health score. See
+[`security/crawler-worker.md`](security/crawler-worker.md).

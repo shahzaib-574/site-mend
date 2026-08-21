@@ -63,7 +63,7 @@ function isIsoTimestamp(value: string): boolean {
   }
 }
 
-function isScanJobPayload(value: unknown): value is ScanJobPayload {
+export function isScanJobPayload(value: unknown): value is ScanJobPayload {
   if (typeof value !== "object" || value === null) {
     return false;
   }
@@ -94,6 +94,14 @@ function isScanJobPayload(value: unknown): value is ScanJobPayload {
     normalized.url === payload.target.origin &&
     normalized.hostname === payload.target.hostname
   );
+}
+
+export function parseScanJobPayload(value: unknown): ScanJobPayload {
+  if (!isScanJobPayload(value)) {
+    throw new Error("The scan queue returned invalid job data.");
+  }
+
+  return value;
 }
 
 function toPublicStatus(state: JobState | "unknown"): PublicScanStatus | null {
@@ -135,7 +143,9 @@ export class BullMqScanQueue implements ScanQueue {
       return null;
     }
 
-    if (!isScanJobPayload(job.data) || job.data.scanId !== scanId) {
+    const payload = parseScanJobPayload(job.data);
+
+    if (payload.scanId !== scanId) {
       throw new Error("The scan queue returned invalid job data.");
     }
 
@@ -146,12 +156,12 @@ export class BullMqScanQueue implements ScanQueue {
     }
 
     return {
-      queuedAt: job.data.requestedAt,
+      queuedAt: payload.requestedAt,
       scanId,
       status,
       target: {
-        hostname: job.data.target.hostname,
-        origin: job.data.target.origin,
+        hostname: payload.target.hostname,
+        origin: payload.target.origin,
       },
     };
   }

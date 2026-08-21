@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { RedisFixedWindowStore } from "./redis-fixed-window-store";
 import { BullMqScanQueue, type ScanJobPayload } from "./scan-queue";
+import { DestinationLeaseManager } from "../../worker/destination-lease";
 
 const redisTestUrl = process.env.REDIS_TEST_URL;
 const describeWithRedis = redisTestUrl ? describe : describe.skip;
@@ -77,5 +78,22 @@ describeWithRedis("Redis scan-intake integration", () => {
       status: "queued",
       target: payload.target,
     });
+  });
+
+  it("serializes crawls per HMAC-keyed destination lease", async () => {
+    const leases = new DestinationLeaseManager(
+      redis,
+      "a-worker-integration-secret-that-is-at-least-32-bytes",
+    );
+    const hostname = `destination-${testId}.example.com`;
+    const first = await leases.acquire(hostname);
+
+    expect(first).not.toBeNull();
+    await expect(leases.acquire(hostname)).resolves.toBeNull();
+
+    await first!.release();
+    const afterRelease = await leases.acquire(hostname);
+    expect(afterRelease).not.toBeNull();
+    await afterRelease!.release();
   });
 });
