@@ -27,6 +27,10 @@ npm install
 npm run dev
 ```
 
+The feature-gated scan API also requires Redis and trusted reverse-proxy client
+identity. It stays disabled by default; see [the scan API guide](docs/api/scans.md)
+before configuring it.
+
 Before opening a pull request:
 
 ```bash

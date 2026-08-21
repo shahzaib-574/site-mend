@@ -43,6 +43,8 @@ validates the origin, bounds DNS work, requires every resolved IPv4 or IPv6 answ
 to be public, and revalidates every redirect destination. Admission failures are
 scan errors rather than website findings and do not affect a site's health score.
 
-The current gate is an internal service only. It does not fetch pages or expose a
-public API. Its threat model and required crawler invariants are documented in
-[`security/scan-admission.md`](security/scan-admission.md).
+The feature-gated scan API invokes this gate before durable queue admission. It
+does not fetch pages. Its target threat model, queue-producer privacy controls, and
+required crawler invariants are documented in
+[`security/scan-admission.md`](security/scan-admission.md) and
+[`security/scan-intake.md`](security/scan-intake.md).

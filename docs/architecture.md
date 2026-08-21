@@ -8,7 +8,7 @@ workers, never on the mobile device or the web request process.
 ```text
 Next.js web / Android companion
               |
-       API and authentication
+ API, admission, and distributed limits
               |
         durable scan queue
               |
@@ -32,11 +32,12 @@ Next.js web / Android companion
 - Lighthouse for controlled lab diagnostics
 - S3-compatible object storage for bounded scan artifacts
 
-The current repository begins with the Next.js product experience. Its internal
-scan-admission service validates origins, bounds DNS resolution, blocks non-public
-IPv4 and IPv6 answers, and revalidates redirect targets. It deliberately exposes
-no public scan API or crawler yet. Worker and API packages will be introduced
-behind explicit boundaries as their PRs begin.
+The current repository begins with the Next.js product experience. Its
+feature-gated scan API validates a bounded request, requires trusted-proxy client
+identity, applies distributed Redis limits, admits DNS, and writes a minimal
+versioned BullMQ job. Intake is disabled by default because no crawler exists yet.
+The status API reads only a small validated public projection. Worker packages
+will be introduced behind explicit boundaries as their PRs begin.
 
 ## Trust boundaries
 
@@ -48,6 +49,10 @@ DNS admission does not replace connection-time enforcement. The crawler must pin
 an admitted address, preserve the hostname for TLS and HTTP validation, verify the
 connected socket address, and disable automatic redirects. See
 [`security/scan-admission.md`](security/scan-admission.md) for the full boundary.
+
+The queue producer stores no client identity, submitted path/query, DNS answer,
+credential, or content. Its abuse, privacy, and deployment controls are defined in
+[`security/scan-intake.md`](security/scan-intake.md).
 
 Browser workers are isolated from application credentials and the private network,
 with CPU, memory, wall-clock, redirect, request, and response limits. Deep or
