@@ -35,3 +35,14 @@ Every finding exposes:
 
 Experimental signals cannot independently create a critical or high-severity
 finding or materially lower the overall score.
+
+## Scan admission gate
+
+Audit rules never run for a target that fails server-side scan admission. The gate
+validates the origin, bounds DNS work, requires every resolved IPv4 or IPv6 answer
+to be public, and revalidates every redirect destination. Admission failures are
+scan errors rather than website findings and do not affect a site's health score.
+
+The current gate is an internal service only. It does not fetch pages or expose a
+public API. Its threat model and required crawler invariants are documented in
+[`security/scan-admission.md`](security/scan-admission.md).
