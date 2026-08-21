@@ -20,8 +20,10 @@ The server-side admission service:
 - resolves relative and absolute redirect locations, then applies the complete
   URL and DNS policy again.
 
-No public endpoint, queue, page fetch, or browser navigation is enabled by this
-boundary.
+The feature-gated [scan intake API](../api/scans.md) can run this admission check
+before adding a minimal job to Redis/BullMQ. Intake remains disabled by default
+until the isolated worker exists. No page fetch or browser navigation is enabled
+by either boundary.
 
 The address policy was reviewed against IANA's current
 [IPv4](https://www.iana.org/assignments/iana-ipv4-special-registry/) and
@@ -45,7 +47,8 @@ future HTTP worker must:
 5. cap redirect count, request count, wall time, response bytes, decompressed
    bytes, and accepted content types;
 6. never forward user cookies, authorization headers, or fetched credentials;
-7. apply distributed rate limits before DNS work and durable queue admission;
+7. preserve the intake boundary's distributed limits and add worker-side
+   concurrency and destination controls;
 8. identify SiteMend's crawler and respect robots.txt; and
 9. require ownership verification before deep, frequent, authenticated, or
    non-public scanning.
@@ -58,3 +61,6 @@ be used for hostile scan targets.
 Admission errors have stable machine-readable codes and plain user-safe messages.
 Callers must not include resolved private addresses, DNS implementation errors,
 tokens, headers, or submitted credentials in logs or client responses.
+
+The queue-producer threat model is documented separately in
+[`scan-intake.md`](scan-intake.md).

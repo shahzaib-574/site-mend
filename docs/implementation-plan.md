@@ -11,6 +11,15 @@ Shopify sites. Freelancers, developers, and individual site owners are secondary
 customers. The north-star metric is **websites with at least one verified fix per
 month**.
 
+## Current foundation status
+
+- Public URL entry and plain-language landing experience are implemented.
+- Server-side URL/DNS admission and redirect revalidation are implemented.
+- A feature-gated, Redis-rate-limited BullMQ intake and public status contract are
+  implemented but disabled by default.
+- No crawler, browser worker, page fetch, or scan result exists yet. Enabling
+  intake is blocked until an isolated address-pinned worker is deployed.
+
 ## Experience principles
 
 1. Deliver useful results before registration.
