@@ -24,6 +24,8 @@ describe("normalizeWebsiteUrl", () => {
     ["http://127.0.0.1", "public domain"],
     ["http://[::1]", "public domain"],
     ["https://example.com:8443", "custom port"],
+    ["example.com:8443", "custom port"],
+    ["localhost:3000", "public domain"],
   ])("rejects %s", (input, expectedMessage) => {
     const result = normalizeWebsiteUrl(input);
 

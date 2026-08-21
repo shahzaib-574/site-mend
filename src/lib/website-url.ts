@@ -58,9 +58,12 @@ export function normalizeWebsiteUrl(input: string): WebsiteUrlResult {
     return { ok: false, message: "That website address is too long." };
   }
 
-  const candidate = /^[a-z][a-z\d+.-]*:/i.test(value)
-    ? value
-    : `https://${value}`;
+  const scheme = /^[a-z][a-z\d+.-]*:/i.exec(value);
+  const textAfterColon = scheme ? value.slice(scheme[0].length) : "";
+  const looksLikeHostAndPort = Boolean(
+    scheme && /^\d+(?:[/?#]|$)/.test(textAfterColon),
+  );
+  const candidate = scheme && !looksLikeHostAndPort ? value : `https://${value}`;
 
   let parsed: URL;
 
@@ -87,19 +90,19 @@ export function normalizeWebsiteUrl(input: string): WebsiteUrlResult {
     };
   }
 
-  if (parsed.port) {
-    return {
-      ok: false,
-      message: "Use the public website address without a custom port.",
-    };
-  }
-
   const hostname = parsed.hostname.toLowerCase();
 
   if (!isPublicDomain(hostname)) {
     return {
       ok: false,
       message: "Enter a public domain name rather than a local address or IP.",
+    };
+  }
+
+  if (parsed.port) {
+    return {
+      ok: false,
+      message: "Use the public website address without a custom port.",
     };
   }
 
