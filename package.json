@@ -2,10 +2,16 @@
   "name": "site-mend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build:web && npm run build:worker",
+    "build:web": "next build",
+    "build:worker": "esbuild src/worker/main.ts --bundle --platform=node --target=node22.19 --format=esm --packages=external --outfile=dist-worker/scan-worker.mjs",
     "start": "next start",
+    "start:worker": "node dist-worker/scan-worker.mjs",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -18,7 +24,8 @@
     "ioredis": "6.0.0",
     "next": "16.3.1",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "undici": "8.10.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -29,6 +36,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.0",
+    "esbuild": "0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "jsdom": "^30.0.1",

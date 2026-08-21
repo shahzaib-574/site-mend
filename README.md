@@ -31,6 +31,11 @@ The feature-gated scan API also requires Redis and trusted reverse-proxy client
 identity. It stays disabled by default; see [the scan API guide](docs/api/scans.md)
 before configuring it.
 
+The homepage crawler is built and run as a separate Node.js service. It also
+stays disabled by default. Read the
+[crawler worker security and deployment guide](docs/security/crawler-worker.md)
+before starting it or enabling public intake.
+
 Before opening a pull request:
 
 ```bash

@@ -15,6 +15,10 @@ Copy `.env.example` to a local environment file and provide:
 | `SCAN_TRUSTED_CLIENT_IP_HEADER` | One header set by a trusted proxy to a single canonical IPv4 or IPv6 address. |
 | `SCAN_RATE_LIMIT_KEY_SECRET` | At least 32 random bytes used to HMAC rate-limit identities. |
 
+Worker configuration is intentionally separate. See
+[`../security/crawler-worker.md`](../security/crawler-worker.md); enabling a
+worker does not enable intake, and enabling intake does not start a worker.
+
 The trusted reverse proxy must strip the named header from inbound traffic and
 replace it with the canonical client address. Never configure a pass-through
 header that a browser can supply directly.
@@ -84,8 +88,11 @@ schema version `1`. The public scan ID is also the BullMQ job ID. Completed stat
 records are retained for at most one day/10,000 jobs and failed status records for
 at most seven days/25,000 jobs, with BullMQ's documented lazy cleanup behavior.
 
-No worker or page fetch exists yet. Enabling intake without a compatible worker
-would accumulate waiting jobs and is prohibited.
+The compatible worker is shipped as a separate, disabled-by-default build. It
+returns its internal evidence as BullMQ job return data; this status API does not
+expose that result yet. Enabling intake before deploying the worker with the
+documented isolation and monitoring controls would accumulate waiting jobs and is
+prohibited.
 
 The required CI quality job runs the fixed-window Lua script and BullMQ queue
 adapter against an ephemeral Redis service. `REDIS_TEST_URL` is test-only and must

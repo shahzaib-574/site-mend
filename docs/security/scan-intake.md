@@ -50,8 +50,8 @@ Before setting `SCAN_INTAKE_ENABLED=true`:
    memory policy, backups, and private-network access controls;
 2. deploy a trusted edge that strips and overwrites the configured client-IP
    header;
-3. deploy the isolated worker described in `scan-admission.md` and confirm it
-   re-admits and pins every connection;
+3. deploy the worker using the isolation gate in `crawler-worker.md` and confirm
+   it re-admits and pins every connection;
 4. configure edge rate and body-size limits;
 5. verify queue depth, oldest-job age, Redis memory, rejection counts, and worker
    failures are monitored; and

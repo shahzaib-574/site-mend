@@ -17,8 +17,11 @@ month**.
 - Server-side URL/DNS admission and redirect revalidation are implemented.
 - A feature-gated, Redis-rate-limited BullMQ intake and public status contract are
   implemented but disabled by default.
-- No crawler, browser worker, page fetch, or scan result exists yet. Enabling
-  intake is blocked until an isolated address-pinned worker is deployed.
+- A feature-gated standalone worker can safely fetch robots.txt and one homepage,
+  follow re-admitted redirects, and return bounded metadata/hash evidence.
+- Multi-page crawling, browser rendering, audit findings, persistence, and public
+  result delivery do not exist yet. Enabling intake remains blocked until the
+  worker is deployed with its required isolation and monitoring controls.
 
 ## Experience principles
 
@@ -124,6 +127,9 @@ Exit: target users understand the product and first action without instruction.
   validation, basic crawler worker, and progress events
 
 Exit: safely crawl and normalize 25 internal public pages.
+
+Progress: secure intake and the isolated-process homepage crawler foundation are
+implemented. Internal-link discovery and the owned-site 25-page crawl remain.
 
 ### Phase 2 - deterministic audit engine (weeks 5-6)
 
