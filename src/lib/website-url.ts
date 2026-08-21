@@ -10,11 +10,15 @@ export type WebsiteUrlResult =
     };
 
 const blockedHostnameSuffixes = [
+  ".alt",
+  ".arpa",
   ".internal",
   ".invalid",
   ".lan",
   ".local",
+  ".localdomain",
   ".localhost",
+  ".onion",
   ".test",
 ];
 
