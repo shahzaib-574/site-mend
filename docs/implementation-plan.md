@@ -19,7 +19,10 @@ month**.
   implemented but disabled by default.
 - A feature-gated standalone worker can safely fetch robots.txt and one homepage,
   follow re-admitted redirects, stream bounded document evidence, and run nine
-  versioned deterministic homepage checks.
+  versioned deterministic homepage checks. Its RFC 9309 and Google-compatible
+  robots matcher selects one combined exact-product rule set or the combined
+  wildcard fallback, enforces explicit parser, storage, and transition budgets,
+  and fails closed before requesting a page when a policy is too complex.
 - A completed status can expose the nine-check report through a versioned,
   allowlisted, ephemeral public result; queued, running, and failed states remain
   metadata-only.
@@ -133,7 +136,10 @@ Exit: target users understand the product and first action without instruction.
 Exit: safely crawl and normalize 25 internal public pages.
 
 Progress: secure intake and the isolated-process homepage crawler foundation are
-implemented. Internal-link discovery and the owned-site 25-page crawl remain.
+implemented. Robots policy work is bounded by the 500 KiB wire limit and the
+parser and matcher ceilings documented in `security/crawler-worker.md`; these
+limits and their fail-closed tests are a public-intake activation invariant.
+Internal-link discovery and the owned-site 25-page crawl remain.
 
 ### Phase 2 - deterministic audit engine (weeks 5-6)
 
@@ -190,6 +196,8 @@ Exit: Android users can manage urgent work without the desktop dashboard.
 - High-severity rules have evidence and focused regression tests.
 - Required CI, dependency audit, security audit, review, and acceptance checks pass.
 - Public scanning cannot access internal or metadata networks.
+- An over-complex robots policy cannot cause unbounded synchronous work, produce
+  a partial allow decision, or permit a homepage request.
 - A user can fix, rescan, and observe a verified resolution.
 - Ten beta customers have used the workflow and five have paid before public launch.
 

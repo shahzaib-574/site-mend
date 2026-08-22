@@ -60,6 +60,14 @@ website failure. A robots denial prevents the remaining page-dependent rules fro
 running. A non-200 response still produces status, HTTPS, robots, and redirect
 checks, while checks that require HTML become `not-applicable`.
 
+Rule selection follows RFC 9309 and Google's documented wildcard behavior for the
+fixed `SiteMendBot` product token: matching exact groups merge and replace the
+wildcard fallback, wildcard and terminal-end markers participate in specificity,
+equivalent ties prefer `Allow`, and `/robots.txt` is implicitly allowed. A policy
+that exceeds the deterministic parser or matcher limits aborts the scan as
+unavailable; it never produces a partial allow/deny decision or a
+`SEARCH-ROBOTS-001` finding.
+
 Title and description lengths are retained as bounded advanced evidence, not used
 as rigid pass/fail thresholds. A missing canonical is optional because canonical
 markup is a recommendation, not an indexability requirement. A canonical pointing
