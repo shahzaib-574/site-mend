@@ -65,6 +65,30 @@ public repository. robots.txt handling follows the conservative rules below:
 If a page is disallowed, the job completes as `blocked-by-robots` and does not
 request it.
 
+The matcher follows [RFC 9309](https://www.rfc-editor.org/rfc/rfc9309.html)
+and [Google's published robots.txt interpretation](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec)
+for the supported fields. User-agent matching is case-insensitive. For the fixed
+`SiteMendBot` product token, every matching exact group is combined into one
+selected rule set; the combined `*` groups are selected only when no exact group
+exists. Exact and wildcard groups are never combined. Rules match the normalized,
+case-sensitive path and query from the first octet, support `*` and a terminal
+`$`, use the most specific matching rule, and prefer `Allow` on an equivalent
+tie. Equivalent rules in the selected set are retained only once.
+
+Canonical rules use literal segments and collapsed wildcard tokens instead of
+compiling site-authored text as regular expressions. Every matcher transition is
+counted against the access-decision budget. Collapsing a repeated wildcard run
+does not change rule precedence: specificity uses the pre-collapse normalized
+octet count, including wildcard syntax and a terminal end marker.
+
+The robots document, parser state, selected rules, canonical patterns, and match
+transitions all have explicit ceilings. A selected policy that exhausts a parser,
+stored-state, or transition budget fails with `ROBOTS_UNAVAILABLE`; SiteMend never
+uses a truncated policy, assumes allow, reports a policy-complexity failure as
+`blocked-by-robots`, or requests the homepage. The 30-second wall deadline remains
+an outer crawl bound, not a way to interrupt synchronous JavaScript, so parser and
+matcher work is bounded directly.
+
 ## Fixed resource limits
 
 | Resource | Limit |
@@ -79,7 +103,19 @@ request it.
 | Socket connect | 5 seconds |
 | Response headers/body inactivity | 8 seconds each |
 | Response headers | 16 KiB |
-| robots.txt body | 500 KiB |
+| robots.txt response body | 500 KiB (512,000 bytes) |
+| robots.txt logical lines | 65,536 |
+| robots.txt line length | 65,536 UTF-16 code units |
+| robots.txt groups | 8,192 |
+| robots.txt agent entries | 16,384 |
+| Distinct retained rules in the selected exact-or-fallback set | 8,192 |
+| Normalized match target | 2,048 code units |
+| Non-wildcard content in one rule | 2,048 code units |
+| Canonical matcher pattern length, excluding the terminal-anchor flag | 4,097 code units |
+| Collapsed wildcard tokens in one rule | 2,049 |
+| Aggregate retained canonical pattern length | 1,048,576 code units |
+| Aggregate retained wildcard tokens | 16,384 |
+| Matcher transitions per access decision | 8,000,000 |
 | Homepage body | 2 MiB |
 | Accepted content encoding | identity only |
 | Homepage body types | `text/html`, `application/xhtml+xml` |
@@ -88,6 +124,31 @@ request it.
 | Stored heading text | 20 headings, 200 normalized characters each |
 | Stored canonical evidence | 10 entries; input URL limited to 2,048 characters |
 | Stored indexing sources | 20 normalized directive entries |
+
+The 2,048-unit non-wildcard rule limit is a match-impossibility filter, not a
+partial-policy budget: an admitted normalized target cannot satisfy a rule that
+requires more literal units, so that rule is discarded without changing any
+possible decision. After repeated wildcard runs are collapsed, the 4,097-unit
+canonical-pattern and 2,049-wildcard maxima follow from that filter and are
+defense-in-depth assertions. Every stateful or computational overflow still fails
+the whole policy.
+
+Wildcard fallback rules are provisional until parsing proves that no exact
+`SiteMendBot` group exists. An overflowed fallback may be discarded only when a
+later exact group definitively replaces it; overflow in whichever exact-or-
+fallback set is finally selected aborts the scan.
+
+The independent ceilings cover both shapes of hostile input: many short records
+and a few expansion-heavy patterns. At the maximum worker concurrency of four,
+robots body bytes admitted across one active fetch per crawl total at most 2,000
+KiB. One parser/matcher pass per active crawl is bounded to 32,768 selected rules,
+4,194,304 canonical pattern units, 65,536 wildcard tokens, and 32,000,000 match
+transitions in aggregate. Previously parsed per-origin policies can be retained
+for reuse within a job; the eight-request budget limits that live set to four
+policies per job and sixteen per process. That bounds the retained sets across a
+process to 131,072 rules, 16,777,216 canonical pattern units, and 262,144 wildcard
+tokens. These are hard ceilings, not preallocated capacities; decoded strings and
+object overhead still require container CPU and memory limits.
 
 Counts and effective index/follow state continue across the storage caps, so an
 attacker cannot hide a later directive by filling the retained collections. The

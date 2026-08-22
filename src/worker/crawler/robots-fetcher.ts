@@ -5,13 +5,20 @@ import {
 } from "../../server/scan-admission";
 import { abortable, CRAWL_LIMITS, type CrawlBudget } from "./crawl-budget";
 import { CrawlerError } from "./errors";
-import type { PinnedHttpClient } from "./pinned-http-client";
+import {
+  SITE_MEND_ROBOTS_TOKEN,
+  type PinnedHttpClient,
+} from "./pinned-http-client";
 import {
   readBoundedBody,
   readLocationHeader,
   requireMediaType,
 } from "./response-body";
-import { parseRobotsPolicy, type RobotsPolicy } from "./robots-policy";
+import {
+  parseRobotsPolicy,
+  RobotsPolicyComplexityError,
+  type RobotsPolicy,
+} from "./robots-policy";
 import {
   isRedirectStatus,
   toEvidenceUrl,
@@ -36,6 +43,22 @@ export interface RobotsFetcherDependencies {
   admitInitial?: typeof admitScanTarget;
   admitRedirect?: typeof admitRedirectTarget;
   http: PinnedHttpClient;
+}
+
+function parseSiteMendRobotsPolicy(text: string): RobotsPolicy {
+  try {
+    return parseRobotsPolicy(text, SITE_MEND_ROBOTS_TOKEN);
+  } catch (error) {
+    if (error instanceof RobotsPolicyComplexityError) {
+      throw new CrawlerError(
+        "ROBOTS_UNAVAILABLE",
+        "The website's robots policy could not be checked safely.",
+        { cause: error },
+      );
+    }
+
+    throw error;
+  }
 }
 
 export class RobotsFetcher {
@@ -102,7 +125,7 @@ export class RobotsFetcher {
               redirects,
               status: "not-found",
             },
-            policy: parseRobotsPolicy(""),
+            policy: parseSiteMendRobotsPolicy(""),
           };
         }
 
@@ -117,7 +140,7 @@ export class RobotsFetcher {
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
               status: "found",
             },
-            policy: parseRobotsPolicy(""),
+            policy: parseSiteMendRobotsPolicy(""),
           };
         }
 
@@ -146,7 +169,7 @@ export class RobotsFetcher {
           );
         }
 
-        const policy = parseRobotsPolicy(text);
+        const policy = parseSiteMendRobotsPolicy(text);
 
         return {
           evidence: {

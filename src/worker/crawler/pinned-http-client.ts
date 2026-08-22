@@ -9,6 +9,7 @@ import {
 } from "../../server/scan-admission";
 import { CRAWL_LIMITS } from "./crawl-budget";
 import { CrawlerError, toCrawlerError } from "./errors";
+import { toHttpRequestTarget } from "./request-target";
 
 export const SITE_MEND_ROBOTS_TOKEN = "SiteMendBot";
 export const SITE_MEND_USER_AGENT =
@@ -164,7 +165,7 @@ export class UndiciPinnedHttpClient implements PinnedHttpClient {
         },
         headersTimeout: CRAWL_LIMITS.headersTimeoutMs,
         method: "GET",
-        path: `${url.pathname}${url.search}`,
+        path: toHttpRequestTarget(url),
         signal: request.signal,
       });
       let disposed = false;

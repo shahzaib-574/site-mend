@@ -17,7 +17,6 @@ import {
 } from "./crawl-budget";
 import { CrawlerError } from "./errors";
 import {
-  SITE_MEND_ROBOTS_TOKEN,
   UndiciPinnedHttpClient,
   type PinnedHttpClient,
 } from "./pinned-http-client";
@@ -32,6 +31,7 @@ import {
   type RobotsEvidence,
   type RobotsResult,
 } from "./robots-fetcher";
+import { RobotsPolicyComplexityError } from "./robots-policy";
 import {
   isRedirectStatus,
   toEvidenceUrl,
@@ -130,7 +130,23 @@ export class HomepageCrawler {
           robotsEvidence.push(robots.evidence);
         }
 
-        if (!robots.policy.isAllowed(target.url, SITE_MEND_ROBOTS_TOKEN)) {
+        let robotsAllowed: boolean;
+
+        try {
+          robotsAllowed = robots.policy.isAllowed(target.url);
+        } catch (error) {
+          if (error instanceof RobotsPolicyComplexityError) {
+            throw new CrawlerError(
+              "ROBOTS_UNAVAILABLE",
+              "The website's robots policy could not be checked safely.",
+              { cause: error },
+            );
+          }
+
+          throw error;
+        }
+
+        if (!robotsAllowed) {
           const blockedAt = toEvidenceUrl(target.url);
 
           return {
