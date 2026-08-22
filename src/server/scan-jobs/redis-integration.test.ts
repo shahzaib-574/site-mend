@@ -110,49 +110,64 @@ describeWithRedis("Redis scan-intake integration", () => {
       statusCode: 204,
     } as const;
     const audit = auditHomepage(auditInput);
-    const queueEvents = new QueueEvents(queueName, {
-      connection: createIORedisClient(redis),
-      prefix: queuePrefix,
-    });
-    const worker = new Worker<ScanJobPayload, HomepageCrawlResult>(
-      queueName,
-      async (job) =>
-        ({
-          audit: auditHomepage({
-            ...auditInput,
-            finalUrl: job.data.target.origin,
-            requestedUrl: job.data.target.origin,
-            robots: [
-              { origin: job.data.target.origin, status: "not-found" as const },
-            ],
-          }),
-          completedAt: "2026-08-21T12:03:00.000Z",
-          homepage: {
-            body: null,
-            finalUrl: job.data.target.origin,
-            redirects: [],
-            requestedUrl: job.data.target.origin,
-            statusCode: 204,
-          },
-          outcome: "fetched",
-          robots: [
-            {
-              finalUrl: new URL("/robots.txt", job.data.target.origin).toString(),
-              origin: job.data.target.origin,
-              redirects: [],
-              status: "not-found",
-            },
-          ],
-          scanId: job.data.scanId,
-          schemaVersion: 2,
-        }) satisfies HomepageCrawlResult,
-      {
-        connection: createIORedisClient(redis),
-        prefix: queuePrefix,
-      },
-    );
+    let workerRedis: Redis | undefined;
+    let queueEvents: QueueEvents | undefined;
+    let worker: Worker<ScanJobPayload, HomepageCrawlResult> | undefined;
 
     try {
+      workerRedis = new Redis(redisTestUrl!, {
+        connectTimeout: 2_000,
+        maxRetriesPerRequest: null,
+      });
+      workerRedis.on("error", () => undefined);
+      queueEvents = new QueueEvents(queueName, {
+        connection: createIORedisClient(workerRedis),
+        prefix: queuePrefix,
+      });
+      worker = new Worker<ScanJobPayload, HomepageCrawlResult>(
+        queueName,
+        async (job) =>
+          ({
+            audit: auditHomepage({
+              ...auditInput,
+              finalUrl: job.data.target.origin,
+              requestedUrl: job.data.target.origin,
+              robots: [
+                {
+                  origin: job.data.target.origin,
+                  status: "not-found" as const,
+                },
+              ],
+            }),
+            completedAt: "2026-08-21T12:03:00.000Z",
+            homepage: {
+              body: null,
+              finalUrl: job.data.target.origin,
+              redirects: [],
+              requestedUrl: job.data.target.origin,
+              statusCode: 204,
+            },
+            outcome: "fetched",
+            robots: [
+              {
+                finalUrl: new URL(
+                  "/robots.txt",
+                  job.data.target.origin,
+                ).toString(),
+                origin: job.data.target.origin,
+                redirects: [],
+                status: "not-found",
+              },
+            ],
+            scanId: job.data.scanId,
+            schemaVersion: 2,
+          }) satisfies HomepageCrawlResult,
+        {
+          connection: createIORedisClient(workerRedis),
+          prefix: queuePrefix,
+        },
+      );
+
       await Promise.all([queueEvents.waitUntilReady(), worker.waitUntilReady()]);
       await scanQueue.enqueue(payload);
       const job = await queue.getJob(scanId);
@@ -173,8 +188,15 @@ describeWithRedis("Redis scan-intake integration", () => {
         target: payload.target,
       });
     } finally {
-      await worker.close();
-      await queueEvents.close();
+      try {
+        await worker?.close();
+      } finally {
+        try {
+          await queueEvents?.close();
+        } finally {
+          await workerRedis?.quit();
+        }
+      }
     }
   });
 
