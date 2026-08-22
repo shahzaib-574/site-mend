@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -62,7 +62,9 @@ describe("ScanEntryForm", () => {
     const hostname = `${"a".repeat(63)}.example.com`;
     render(<ScanEntryForm />);
 
-    await user.type(screen.getByLabelText(/website address/i), hostname);
+    fireEvent.change(screen.getByLabelText(/website address/i), {
+      target: { value: hostname },
+    });
     await user.click(screen.getByRole("button", { name: /check this address/i }));
 
     for (const address of screen.getAllByText(new RegExp(hostname, "i"))) {

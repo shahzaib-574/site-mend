@@ -8,7 +8,7 @@ import Redis from "ioredis";
 import {
   SCAN_QUEUE_NAME,
   type ScanJobPayload,
-} from "../server/scan-jobs/scan-queue";
+} from "../lib/scan-job-contract";
 import { HomepageCrawler, type HomepageCrawlResult } from "./crawler/homepage-crawler";
 import { DestinationLeaseManager } from "./destination-lease";
 import { readScanWorkerConfig } from "./runtime-config";

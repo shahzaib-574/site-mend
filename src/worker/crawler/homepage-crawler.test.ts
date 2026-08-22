@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AdmittedScanTarget } from "../../server/scan-admission";
 import type { ScanJobPayload } from "../../server/scan-jobs/scan-queue";
+import { projectPublicHomepageResult } from "../../server/scan-jobs/public-result";
 import { HomepageCrawler } from "./homepage-crawler";
 import type {
   PinnedHttpClient,
@@ -142,6 +143,12 @@ describe("HomepageCrawler", () => {
     });
     expect(result.audit.checks).toHaveLength(9);
     expect(JSON.stringify(result)).not.toContain("<html>");
+    expect(
+      projectPublicHomepageResult(result, {
+        requestedUrl: payload.target.origin,
+        scanId: payload.scanId,
+      }),
+    ).toMatchObject({ outcome: "fetched", schemaVersion: 1 });
     expect(robots.dispose).toHaveBeenCalled();
     expect(homepage.dispose).toHaveBeenCalled();
   });
@@ -192,7 +199,38 @@ describe("HomepageCrawler", () => {
       outcome: "blocked-by-robots",
       robots: [{ origin: "https://example.com/", status: "found" }],
     });
+    expect(
+      projectPublicHomepageResult(result, {
+        requestedUrl: payload.target.origin,
+        scanId: payload.scanId,
+      }),
+    ).toMatchObject({ outcome: "blocked-by-robots", schemaVersion: 1 });
     expect(http.requested).toEqual(["https://example.com/robots.txt"]);
+  });
+
+  it("projects a robots block reached after a sanitized homepage redirect", async () => {
+    const http = queuedHttp({
+      "https://example.com/": fakeResponse(301, {
+        headers: { location: "/private?token=not-evidence" },
+      }),
+      "https://example.com/robots.txt": fakeResponse(200, {
+        body: "User-agent: SiteMendBot\nDisallow: /private\n",
+        headers: { "content-type": "text/plain" },
+      }),
+    });
+
+    const result = await crawler(http).crawl(payload);
+
+    expect(result).toMatchObject({
+      blockedAt: "https://example.com/private",
+      outcome: "blocked-by-robots",
+    });
+    expect(
+      projectPublicHomepageResult(result, {
+        requestedUrl: payload.target.origin,
+        scanId: payload.scanId,
+      }),
+    ).toMatchObject({ outcome: "blocked-by-robots", schemaVersion: 1 });
   });
 
   it("checks robots for a new redirect origin before fetching it", async () => {

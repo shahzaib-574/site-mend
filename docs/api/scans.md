@@ -60,10 +60,50 @@ authorization data are never placed in the queue payload.
 GET /api/scans/scan-11111111-1111-4111-8111-111111111111
 ```
 
-The status contract exposes only `queued`, `running`, `completed`, or `failed`,
-the public target origin, the scan ID, and the queue timestamp. It never exposes
-BullMQ failure reasons, stack traces, worker data, or Redis errors. Unknown,
-removed, malformed, and invalid scan IDs return the same `404` response.
+Every status response exposes only `queued`, `running`, `completed`, or `failed`,
+the public target origin, the scan ID, and the queue timestamp. `queued`,
+`running`, and `failed` responses are metadata-only. They never include partial
+worker output, failure reasons, stack traces, or retry details.
+
+A `completed` response additionally exposes one allowlisted public result:
+
+```ts
+type PublicHomepageResult = {
+  schemaVersion: 1;
+  completedAt: string;
+  outcome: "fetched" | "blocked-by-robots";
+  report: {
+    schemaVersion: 1;
+    rulesetVersion: "homepage-v1";
+    checks: HomepageAuditCheck[]; // Exactly the nine homepage-v1 checks.
+    findings: HomepageAuditFinding[]; // Failed-check findings only.
+  };
+};
+```
+
+The two allowed outcomes are `fetched` and `blocked-by-robots`. The report always
+contains the nine `homepage-v1` checks for status, HTTPS, robots access,
+redirects, title, description, canonical, headings, and indexing directives;
+checks that could not run are explicitly `not-applicable`.
+
+The API strictly decodes the bounded crawl evidence, recomputes `homepage-v1` in
+trusted server code, and requires the stored worker report to match that
+recomputation before constructing the public result field by field. It never
+passes through BullMQ's raw `returnvalue` or exposes crawl transport data, raw
+HTML, response-body hashes, HTTP headers, worker failure details, internal errors,
+or a health/category score. Page-authored title and description excerpts are
+omitted from the public evidence; a non-public canonical target is replaced with
+a fixed withholding label. An unknown, contradictory, or malformed completed-job
+result, including an unexpected field, schema, rule set, check, finding, or
+outcome, fails closed with the same generic `503` response used for unavailable
+scan infrastructure. The final serialized public result is capped at 256 KiB;
+the cap is above the maximum currently reviewed producer-shaped report.
+
+Unknown or removed jobs and syntactically invalid scan IDs return the same `404`
+response. A status URL is an ephemeral bearer link: anyone who obtains it can
+read that scan's public metadata and, once completed, its allowlisted report. It
+must not be treated as durable storage or shared as if it were an authenticated
+project URL.
 
 ## Distributed limits
 
@@ -85,14 +125,19 @@ and unexpected data failures return a generic `503` with no infrastructure detai
 
 BullMQ queue `site-mend-scans` receives job name `homepage-health-check` with
 schema version `1`. The public scan ID is also the BullMQ job ID. Completed status
-records are retained for at most one day/10,000 jobs and failed status records for
-at most seven days/25,000 jobs, with BullMQ's documented lazy cleanup behavior.
+records are configured for cleanup after one day or when more than 10,000 are
+retained; failed records are configured for cleanup after seven days or when more
+than 25,000 are retained. BullMQ applies age/count cleanup lazily when later jobs
+finish, so these values are retention targets, not a hard at-most TTL. A bearer
+status link can stop resolving because of either cleanup limit, and an idle queue
+can retain an older record beyond its configured age.
 
 The compatible worker is shipped as a separate, disabled-by-default build. It
-returns its internal evidence as BullMQ job return data; this status API does not
-expose that result yet. Enabling intake before deploying the worker with the
-documented isolation and monitoring controls would accumulate waiting jobs and is
-prohibited.
+returns internal crawl evidence as BullMQ worker return data (`returnvalue`). The
+status API validates that data and publishes only the completed-result projection
+documented above.
+Enabling intake before deploying the worker with the documented isolation and
+monitoring controls would accumulate waiting jobs and is prohibited.
 
 The required CI quality job runs the fixed-window Lua script and BullMQ queue
 adapter against an ephemeral Redis service. `REDIS_TEST_URL` is test-only and must

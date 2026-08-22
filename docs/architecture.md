@@ -39,8 +39,10 @@ versioned BullMQ job. A separately built Node.js worker can consume one homepage
 job, enforce robots.txt, pin an admitted address, and return bounded evidence.
 The worker streams that evidence through the first nine versioned homepage rules;
 it does not retain raw HTML. Both services remain disabled by default until the
-deployment isolation gate is satisfied. The status API reads only a small
-validated public projection and does not yet expose the audit report.
+deployment isolation gate is satisfied. For a completed job, the status API can
+publish a versioned, allowlisted homepage result containing only completion time,
+the `fetched` or `blocked-by-robots` outcome, and the `homepage-v1` report. Queued,
+running, and failed states remain metadata-only.
 
 ## Trust boundaries
 
@@ -56,6 +58,16 @@ connected socket address, and disable automatic redirects. See
 The queue producer stores no client identity, submitted path/query, DNS answer,
 credential, or content. Its abuse, privacy, and deployment controls are defined in
 [`security/scan-intake.md`](security/scan-intake.md).
+
+Public status URLs are anonymous, ephemeral bearer links rather than durable
+report storage or authenticated authorization. The API strictly decodes crawl
+evidence, recomputes the deterministic audit, verifies the worker copy, and then
+rebuilds completed results field by field. Unknown, contradictory, or malformed
+worker results receive a generic unavailable response. The API never exposes
+BullMQ `returnvalue` directly, crawl transport fields, HTML, hashes, headers,
+failure details, page-authored text excerpts, non-public canonical targets, or
+scores. BullMQ's age/count removal is lazy, so configured retention windows are
+not hard TTLs.
 
 Browser workers are isolated from application credentials and the private network,
 with CPU, memory, wall-clock, redirect, request, and response limits. Deep or
@@ -77,7 +89,9 @@ The implemented `homepage-v1` rules run in the standalone worker against bounded
 initial-HTML evidence. They cover final status, HTTPS, robots access, redirects,
 title, description, canonical, headings, and page-level indexing directives. No
 score is calculated yet, and rendered-page, field-data, multi-page, and AI
-readiness checks remain separate future stages.
+readiness checks remain separate future stages. The same nine checks and any
+findings from failed checks form the only report accepted by the public completed
+result contract.
 
 ## Initial data entities
 

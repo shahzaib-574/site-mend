@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { auditHomepage } from "@/audit/homepage/audit-homepage";
 import { ScanAdmissionError } from "@/server/scan-admission";
 
 import { handleCreateScanRequest, handleGetScanRequest } from "./api-handlers";
@@ -7,6 +8,15 @@ import { RateLimitExceededError } from "./errors";
 import type { ScanRuntime } from "./runtime";
 
 const scanId = "scan-11111111-1111-4111-8111-111111111111";
+const completedAudit = auditHomepage({
+  blockedAt: null,
+  document: null,
+  finalUrl: "https://example.com/",
+  redirects: [],
+  requestedUrl: "https://example.com/",
+  robots: [{ origin: "https://example.com/", status: "found" }],
+  statusCode: 200,
+});
 
 function createRuntime() {
   const submit = vi.fn(async () => ({
@@ -205,6 +215,66 @@ describe("handleGetScanRequest", () => {
       scanId,
       "203.0.113.9",
     );
+  });
+
+  it("returns the allowlisted homepage report for a completed scan", async () => {
+    const runtime = createRuntime();
+    vi.mocked(runtime.service.getStatus).mockResolvedValue({
+      queuedAt: "2026-08-21T12:00:00.000Z",
+      result: {
+        completedAt: "2026-08-21T12:01:00.000Z",
+        outcome: "fetched",
+        report: completedAudit,
+        schemaVersion: 1,
+      },
+      scanId,
+      status: "completed",
+      target: { hostname: "example.com", origin: "https://example.com/" },
+    });
+
+    const response = await handleGetScanRequest(
+      createGetRequest(),
+      scanId,
+      () => runtime,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        queuedAt: "2026-08-21T12:00:00.000Z",
+        result: {
+          completedAt: "2026-08-21T12:01:00.000Z",
+          outcome: "fetched",
+          report: completedAudit,
+          schemaVersion: 1,
+        },
+        scanId,
+        status: "completed",
+        target: { hostname: "example.com", origin: "https://example.com/" },
+      },
+    });
+  });
+
+  it("does not disclose an invalid completed queue result", async () => {
+    const runtime = createRuntime();
+    vi.mocked(runtime.service.getStatus).mockRejectedValue(
+      new Error("<html>secret worker return data</html>"),
+    );
+
+    const response = await handleGetScanRequest(
+      createGetRequest(),
+      scanId,
+      () => runtime,
+    );
+    const body = JSON.stringify(await response.json());
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(body).not.toContain("secret worker return data");
+    expect(body).not.toContain("html");
   });
 
   it("returns 404 without initializing runtime for an invalid scan ID", async () => {

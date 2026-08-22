@@ -20,9 +20,12 @@ month**.
 - A feature-gated standalone worker can safely fetch robots.txt and one homepage,
   follow re-admitted redirects, stream bounded document evidence, and run nine
   versioned deterministic homepage checks.
-- Multi-page crawling, browser rendering, scoring, persistence, and public result
-  delivery do not exist yet. Enabling intake remains blocked until the worker is
-  deployed with its required isolation and monitoring controls.
+- A completed status can expose the nine-check report through a versioned,
+  allowlisted, ephemeral public result; queued, running, and failed states remain
+  metadata-only.
+- Multi-page crawling, browser rendering, scoring, durable result persistence,
+  and a public results UI do not exist yet. Enabling intake remains blocked until
+  the worker is deployed with its required isolation and monitoring controls.
 
 ## Experience principles
 
@@ -141,8 +144,10 @@ Exit: at least 25 deterministic checks with regression tests.
 
 Progress: `homepage-v1` implements the first nine checks for status, HTTPS,
 robots access, redirects, title, description, canonical, headings, and indexing
-directives. The worker emits complete finding contracts, but grouping, scoring,
-persistence, and the remaining checks are still open.
+directives. The worker emits complete finding contracts, and the status API can
+publish only a strict allowlisted projection of that report for completed jobs.
+Grouping, scoring, durable persistence, a results interface, and the remaining
+checks are still open.
 
 ### Phase 3 - performance and AI readiness (weeks 7-8)
 
