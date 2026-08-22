@@ -3,15 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ScanEntryForm } from "./scan-entry-form";
-
-const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
-}));
+import { hardNavigateToDocument, ScanEntryForm } from "./scan-entry-form";
 
 const scanId = "scan-11111111-1111-4111-8111-111111111111";
+const navigateToDocumentMock = vi.fn<(target: string) => void>();
 
 function acceptedResponse(origin = "https://example.com/") {
   return Response.json(
@@ -30,13 +25,23 @@ function acceptedResponse(origin = "https://example.com/") {
 
 describe("ScanEntryForm", () => {
   beforeEach(() => {
-    pushMock.mockReset();
+    navigateToDocumentMock.mockReset();
     window.sessionStorage.clear();
     vi.unstubAllGlobals();
   });
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("uses Location.assign for a hard new-document navigation", () => {
+    const assign = vi.fn<Location["assign"]>();
+    const target = `/scan#${scanId}`;
+
+    hardNavigateToDocument(target, { assign });
+
+    expect(assign).toHaveBeenCalledOnce();
+    expect(assign).toHaveBeenCalledWith(target);
   });
 
   it("renders a disabled POST-only fallback until secure client normalization is ready", () => {
@@ -126,14 +131,19 @@ describe("ScanEntryForm", () => {
     await user.click(screen.getByRole("button", { name: /check this address/i }));
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateToDocumentMock).not.toHaveBeenCalled();
     expect(screen.getByRole("status")).toHaveTextContent(/without fetching/i);
   });
 
-  it("posts only the normalized origin and navigates with a decoded bearer fragment", async () => {
+  it("posts only the normalized origin and hard-navigates to the exact local bearer target", async () => {
     const fetchMock = vi.fn(async () => acceptedResponse());
     vi.stubGlobal("fetch", fetchMock);
-    render(<ScanEntryForm liveScanningEnabled />);
+    render(
+      <ScanEntryForm
+        liveScanningEnabled
+        navigateToDocument={navigateToDocumentMock}
+      />,
+    );
 
     const input = screen.getByLabelText(/website address/i);
     const submit = screen.getByRole("button", { name: /start health check/i });
@@ -145,7 +155,10 @@ describe("ScanEntryForm", () => {
     });
     fireEvent.submit(submit.closest("form")!);
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith(`/scan#${scanId}`));
+    await waitFor(() =>
+      expect(navigateToDocumentMock).toHaveBeenCalledWith(`/scan#${scanId}`),
+    );
+    expect(navigateToDocumentMock).toHaveBeenCalledOnce();
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/scans",
@@ -165,7 +178,51 @@ describe("ScanEntryForm", () => {
     expect(document.body).not.toHaveTextContent("secret");
   });
 
-  it("prevents duplicate jobs while a submission is in flight", async () => {
+  it("does not navigate when a 202 response contains an unverified scan ID", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            data: {
+              scanId: scanId.toUpperCase(),
+              status: "queued",
+              statusUrl: "/api/scans/status",
+              target: {
+                hostname: "example.com",
+                origin: "https://example.com/",
+              },
+            },
+            message: "Your website health check is queued.",
+          },
+          { status: 202 },
+        ),
+      ),
+    );
+    render(
+      <ScanEntryForm
+        liveScanningEnabled
+        navigateToDocument={navigateToDocumentMock}
+      />,
+    );
+
+    const submit = screen.getByRole("button", { name: /start health check/i });
+    await waitFor(() => expect(submit).toBeEnabled());
+    fireEvent.change(screen.getByLabelText(/website address/i), {
+      target: { value: "example.com" },
+    });
+    fireEvent.submit(submit.closest("form")!);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /unreadable scan response/i,
+    );
+    expect(navigateToDocumentMock).not.toHaveBeenCalled();
+    expect(
+      window.sessionStorage.getItem("sitemend:last-normalized-origin:v1"),
+    ).toBeNull();
+  });
+
+  it("does not navigate before a strict accepted response or create duplicate jobs", async () => {
     let resolveResponse: ((value: Response) => void) | undefined;
     const fetchMock = vi.fn(
       () =>
@@ -174,7 +231,12 @@ describe("ScanEntryForm", () => {
         }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    render(<ScanEntryForm liveScanningEnabled />);
+    render(
+      <ScanEntryForm
+        liveScanningEnabled
+        navigateToDocument={navigateToDocumentMock}
+      />,
+    );
 
     const input = screen.getByLabelText(/website address/i);
     const submit = screen.getByRole("button", { name: /start health check/i });
@@ -185,10 +247,11 @@ describe("ScanEntryForm", () => {
     fireEvent.submit(form);
 
     expect(fetchMock).toHaveBeenCalledOnce();
+    expect(navigateToDocumentMock).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /starting health check/i })).toBeDisabled();
 
     resolveResponse?.(acceptedResponse());
-    await waitFor(() => expect(pushMock).toHaveBeenCalledOnce());
+    await waitFor(() => expect(navigateToDocumentMock).toHaveBeenCalledOnce());
   });
 
   it("maps an exact server error to controlled copy without claiming no job exists", async () => {
@@ -207,7 +270,12 @@ describe("ScanEntryForm", () => {
       ),
     );
     const user = userEvent.setup();
-    render(<ScanEntryForm liveScanningEnabled />);
+    render(
+      <ScanEntryForm
+        liveScanningEnabled
+        navigateToDocument={navigateToDocumentMock}
+      />,
+    );
 
     await user.type(screen.getByLabelText(/website address/i), "example.com");
     await user.click(screen.getByRole("button", { name: /start health check/i }));
@@ -217,7 +285,7 @@ describe("ScanEntryForm", () => {
     );
     expect(screen.getByRole("alert")).not.toHaveTextContent(/no scan was started/i);
     expect(document.body).not.toHaveTextContent("redis-secret");
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateToDocumentMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -275,7 +343,12 @@ describe("ScanEntryForm", () => {
   ] as const)("fails closed for %s", async (_description, responseFactory) => {
     vi.stubGlobal("fetch", vi.fn(async () => responseFactory()));
     const user = userEvent.setup();
-    render(<ScanEntryForm liveScanningEnabled />);
+    render(
+      <ScanEntryForm
+        liveScanningEnabled
+        navigateToDocument={navigateToDocumentMock}
+      />,
+    );
 
     await user.type(screen.getByLabelText(/website address/i), "example.com");
     await user.click(screen.getByRole("button", { name: /start health check/i }));
@@ -285,7 +358,7 @@ describe("ScanEntryForm", () => {
     );
     expect(screen.getByRole("alert")).not.toHaveTextContent(/no scan was started/i);
     expect(document.body).not.toHaveTextContent("redis-secret");
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateToDocumentMock).not.toHaveBeenCalled();
   });
 
   it("times out one create request without retrying or claiming it was not queued", async () => {
@@ -303,7 +376,12 @@ describe("ScanEntryForm", () => {
         }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    render(<ScanEntryForm liveScanningEnabled />);
+    render(
+      <ScanEntryForm
+        liveScanningEnabled
+        navigateToDocument={navigateToDocumentMock}
+      />,
+    );
 
     fireEvent.change(screen.getByLabelText(/website address/i), {
       target: { value: "example.com" },
@@ -318,7 +396,7 @@ describe("ScanEntryForm", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(screen.getByRole("alert")).toHaveTextContent(/may still have been queued/i);
     expect(screen.getByRole("alert")).not.toHaveTextContent(/no scan was started/i);
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateToDocumentMock).not.toHaveBeenCalled();
   });
 
   it("treats a network failure as ambiguous and never retries automatically", async () => {
@@ -327,7 +405,12 @@ describe("ScanEntryForm", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<ScanEntryForm liveScanningEnabled />);
+    render(
+      <ScanEntryForm
+        liveScanningEnabled
+        navigateToDocument={navigateToDocumentMock}
+      />,
+    );
 
     await user.type(screen.getByLabelText(/website address/i), "example.com");
     await user.click(screen.getByRole("button", { name: /start health check/i }));
@@ -335,7 +418,7 @@ describe("ScanEntryForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/outcome is unknown/i);
     expect(screen.getByRole("alert")).not.toHaveTextContent(/no scan was started/i);
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateToDocumentMock).not.toHaveBeenCalled();
   });
 
   it("restores only an already-normalized public origin", async () => {
@@ -344,7 +427,12 @@ describe("ScanEntryForm", () => {
       "https://example.com/private?token=secret",
     );
 
-    render(<ScanEntryForm liveScanningEnabled />);
+    render(
+      <ScanEntryForm
+        liveScanningEnabled
+        navigateToDocument={navigateToDocumentMock}
+      />,
+    );
 
     await waitFor(() =>
       expect(window.sessionStorage.getItem("sitemend:last-normalized-origin:v1")).toBeNull(),

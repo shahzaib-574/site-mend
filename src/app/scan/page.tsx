@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { connection } from "next/server";
 
+import { HardDocumentLink } from "@/components/hard-document-link";
 import { PublicScanView } from "@/components/public-scan-view";
 import { product } from "@/lib/product";
 import { isPublicScanUiEnabled } from "@/server/public-scan-ui-config";
 
 export const metadata: Metadata = {
-  title: "Website health check | SiteMend",
+  title: "Website health check",
   description: "A temporary, link-access SiteMend homepage health-check report.",
   robots: {
     follow: false,
@@ -27,20 +27,19 @@ export function ScanPageShell({
 
       <header className="report-header border-b border-line/80">
         <div className="mx-auto flex min-h-20 w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
-          <Link
-            aria-label={`${product.name} home`}
+          <HardDocumentLink
+            ariaLabel={`${product.name} home`}
             className="inline-flex min-h-12 items-center gap-3 rounded-xl font-extrabold tracking-[-0.03em] text-ink"
             href="/"
-            prefetch={false}
           >
             <span aria-hidden="true" className="brand-mark">
               S
             </span>
             <span className="text-lg">{product.name}</span>
-          </Link>
-          <Link className="secondary-action" href="/#website-check" prefetch={false}>
+          </HardDocumentLink>
+          <HardDocumentLink className="secondary-action" href="/#website-check">
             New check
-          </Link>
+          </HardDocumentLink>
         </div>
       </header>
 
@@ -57,9 +56,9 @@ export function ScanPageShell({
               No website request was made. You can still return to the homepage
               and check that an address is formatted correctly.
             </p>
-            <Link className="primary-action mt-6" href="/#website-check" prefetch={false}>
+            <HardDocumentLink className="primary-action mt-6" href="/#website-check">
               Check an address
-            </Link>
+            </HardDocumentLink>
           </section>
         )}
       </main>

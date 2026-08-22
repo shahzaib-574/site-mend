@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run build:web && npm run build:worker",
-    "build:web": "next build",
+    "build:web": "next build && npm run verify:next-build",
     "build:worker": "esbuild src/worker/main.ts --bundle --platform=node --target=node22.19 --format=esm --packages=external --outfile=dist-worker/scan-worker.mjs",
     "start": "next start",
     "start:worker": "node dist-worker/scan-worker.mjs",
@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:next-build": "node scripts/verify-next-build.mjs",
     "audit": "npm audit --audit-level=high",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build && npm run audit"
   },

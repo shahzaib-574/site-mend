@@ -14,9 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SiteMend — The easiest website health check",
+  title: {
+    default: "SiteMend — Clear public-homepage health checks",
+    template: "%s | SiteMend",
+  },
   description:
-    "Preview SiteMend, a plain-language website health check for SEO, speed, technical quality, content, AEO, and GEO.",
+    "Check one public homepage for status, HTTPS, robots access, redirects, title, description, canonical, headings, and indexing directives. Speed, multi-page crawling, AEO, and GEO are planned.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

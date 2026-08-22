@@ -1,8 +1,25 @@
+import type { Metadata } from "next";
 import { connection } from "next/server";
 
+import { PublicFooter, PublicHeader } from "@/components/public-site-shell";
 import { ScanEntryForm } from "@/components/scan-entry-form";
-import { product } from "@/lib/product";
+import { createPublicPageMetadata } from "@/lib/public-page-metadata";
 import { isPublicScanUiEnabled } from "@/server/public-scan-ui-config";
+
+const homeDescription =
+  "Check one public homepage for status, HTTPS, robots access, redirects, title, description, canonical, headings, and indexing directives. Speed, multi-page crawling, AEO, and GEO are planned.";
+
+export const dynamic = "force-dynamic";
+
+export function generateMetadata(): Metadata {
+  return createPublicPageMetadata({
+    description: homeDescription,
+    path: "/",
+    title: {
+      absolute: "SiteMend — Clear public-homepage health checks",
+    },
+  });
+}
 
 const healthAreas = [
   {
@@ -93,46 +110,7 @@ export function HomePage({
 }: Readonly<{ liveScanningEnabled?: boolean }>) {
   return (
     <>
-      <a className="skip-link" href="#main-content">
-        Skip to main content
-      </a>
-
-      <header className="border-b border-line/80" id="top">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-stretch gap-2 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:px-8 lg:px-10">
-          <a
-            aria-label={`${product.name} home`}
-            className="inline-flex min-h-12 w-fit items-center gap-3 rounded-xl font-extrabold tracking-[-0.03em] text-ink"
-            href="#top"
-          >
-            <span aria-hidden="true" className="brand-mark">
-              S
-            </span>
-            <span className="text-lg">{product.name}</span>
-          </a>
-
-          <nav
-            aria-label="Primary navigation"
-            className="grid w-full grid-cols-3 items-center gap-1 sm:ml-auto sm:flex sm:w-auto"
-          >
-            <a className="nav-link justify-center text-center" href="#how-it-works">
-              How it works
-            </a>
-            <a className="nav-link justify-center text-center" href="#what-we-check">
-              What we check
-            </a>
-            <a className="nav-link justify-center text-center" href="#why-sitemend">
-              Why SiteMend
-            </a>
-          </nav>
-
-          <a className="primary-action min-h-12 w-full justify-center sm:ml-2 sm:w-auto" href="#website-check">
-            Check a homepage
-            <span aria-hidden="true" className="action-arrow">
-              ↓
-            </span>
-          </a>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main id="main-content" tabIndex={-1}>
         <section className="hero-grid" aria-labelledby="hero-title">
@@ -344,31 +322,7 @@ export function HomePage({
         </section>
       </main>
 
-      <footer className="border-t border-line/80">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
-          <div>
-            <p className="font-extrabold text-ink">{product.name}</p>
-            <p className="mt-1">{product.tagline}</p>
-          </div>
-          <nav aria-label="Footer navigation" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <a className="footer-link" href="#how-it-works">
-              How it works
-            </a>
-            <a className="footer-link" href="#what-we-check">
-              What we check
-            </a>
-            <a
-              className="footer-link"
-              href="https://github.com/shahzaib-574/site-mend"
-              rel="noreferrer"
-              target="_blank"
-            >
-              Open-source build
-              <span className="sr-only"> (opens in a new tab)</span>
-            </a>
-          </nav>
-        </div>
-      </footer>
+      <PublicFooter />
     </>
   );
 }

@@ -304,6 +304,17 @@ WCAG 2.2 AA is a release requirement, not a final polish pass.
   results, testimonials, scan counts, or performance claims.
 - Ads and commercial prompts are visually identified and never resemble findings,
   system messages, or primary product actions.
+- Advertising is permanently excluded from scan entry, progress, reports,
+  findings, errors, forms, authentication/account surfaces, legal/contact/consent
+  pages, and any view carrying a capability or private state.
+- A future ad unit may appear only beside substantial publisher-authored editorial
+  content, after consent and policy gates pass. It is labelled `Advertisement`,
+  reserves its final space before loading, and never sits beside navigation,
+  download-like controls, or a primary action.
+- Third-party scripts never live in the root layout. A monetized editorial page
+  uses a native full-document link into the third-party-free homepage before the
+  user can submit; a successful submission then loads the capability-bearing
+  result as another new document. Client routing cannot cross either boundary.
 
 ## Play-responsive considerations
 
@@ -323,6 +334,10 @@ web page in a shell.
   and deep links while retaining SiteMend's tokens and content hierarchy.
 - Ads must never cover content, shift a control during interaction, interrupt the
   scan-to-fix flow, or be confused with a result. Reserve ad space and label it.
+- Web content rendered by a Trusted Web Activity remains web inventory and uses
+  AdSense; native Android inventory uses AdMob. Do not inject a native ad unit
+  into the web DOM or treat one consent implementation as automatically covering
+  both contexts.
 - Before store submission, test all adaptive sizes, portrait and landscape,
   Android Back, state restoration, TalkBack, 200% text, slow network, offline
   recovery, install/update, privacy disclosures, and ad consent behavior.

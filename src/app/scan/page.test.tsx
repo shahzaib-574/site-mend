@@ -17,6 +17,10 @@ describe("ScanPageShell", () => {
       "href",
       "/#website-check",
     );
+    expect(screen.getByRole("link", { name: "New check" })).toHaveAttribute(
+      "data-navigation",
+      "new-document",
+    );
   });
 
   it("has no detectable automated accessibility violations when disabled", async () => {

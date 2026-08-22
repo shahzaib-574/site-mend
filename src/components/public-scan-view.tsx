@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { HardDocumentLink } from "@/components/hard-document-link";
 import {
   decodePublicScanError,
   decodePublicScanStatusEnvelope,
@@ -208,9 +208,9 @@ function RecoveryPanel({
         <button className="primary-action" disabled={isRequesting} onClick={onRetry} type="button">
           {isRequesting ? "Checking status…" : "Check status again"}
         </button>
-        <Link className="secondary-action" href="/#website-check" prefetch={false}>
+        <HardDocumentLink className="secondary-action" href="/#website-check">
           Start a new check
-        </Link>
+        </HardDocumentLink>
       </div>
       <p className="mt-5 text-sm leading-6 text-muted">
         This is a temporary link-access report. Anyone with the link can view it.
@@ -592,9 +592,9 @@ export function PublicScanView() {
           <p className="report-state-copy mt-5">
             JavaScript is required to read this temporary report link. No status request was made from this page, and the scan may still be running.
           </p>
-          <Link className="secondary-action mt-4" href="/#website-check" prefetch={false}>
+          <HardDocumentLink className="secondary-action mt-4" href="/#website-check">
             Return home to start a new check
-          </Link>
+          </HardDocumentLink>
         </noscript>
       </section>
       );
@@ -610,9 +610,9 @@ export function PublicScanView() {
         <p className="report-state-copy">
           No status request was made. Start a new check to create a fresh temporary link-access report.
         </p>
-        <Link className="primary-action mt-6" href="/#website-check" prefetch={false}>
+        <HardDocumentLink className="primary-action mt-6" href="/#website-check">
           Start a new check
-        </Link>
+        </HardDocumentLink>
       </section>
       );
     }
@@ -630,9 +630,9 @@ export function PublicScanView() {
         <p className="mt-5 text-sm leading-6 text-muted">
           Anyone with a working report link can view it.
         </p>
-        <Link className="primary-action mt-6" href="/#website-check" prefetch={false}>
+        <HardDocumentLink className="primary-action mt-6" href="/#website-check">
           Start a new check
-        </Link>
+        </HardDocumentLink>
       </section>
       );
     }
@@ -675,9 +675,9 @@ export function PublicScanView() {
         <p className="mt-5 text-sm leading-6 text-muted">
           This is a temporary link-access report. Anyone with the link can view it.
         </p>
-        <Link className="primary-action mt-6" href="/#website-check" prefetch={false}>
+        <HardDocumentLink className="primary-action mt-6" href="/#website-check">
           Start a new check
-        </Link>
+        </HardDocumentLink>
       </section>
       );
     }

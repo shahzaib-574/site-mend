@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
   FormEvent,
   useEffect,
@@ -26,6 +25,18 @@ const CREATE_SCAN_REQUEST_TIMEOUT_MILLISECONDS = 15_000;
 const subscribeToHydration = () => () => undefined;
 const readHydratedSnapshot = () => true;
 const readServerSnapshot = () => false;
+
+type ScanEntryFormProps = Readonly<{
+  liveScanningEnabled?: boolean;
+  navigateToDocument?: (target: string) => void;
+}>;
+
+export function hardNavigateToDocument(
+  target: string,
+  location: Pick<Location, "assign"> = window.location,
+): void {
+  location.assign(target);
+}
 
 const healthAreas = [
   "Search visibility",
@@ -79,8 +90,8 @@ function isAbortError(error: unknown): boolean {
 
 export function ScanEntryForm({
   liveScanningEnabled = false,
-}: Readonly<{ liveScanningEnabled?: boolean }>) {
-  const router = useRouter();
+  navigateToDocument = hardNavigateToDocument,
+}: ScanEntryFormProps) {
   const [value, setValue] = useState("");
   const [result, setResult] = useState<WebsiteUrlResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -191,7 +202,7 @@ export function ScanEntryForm({
         // Navigation still works when storage is blocked.
       }
 
-      router.push(`/scan#${envelope.data.scanId}`);
+      navigateToDocument(`/scan#${envelope.data.scanId}`);
     } catch (error) {
       if (isAbortError(error)) {
         if (requestTimedOut) {

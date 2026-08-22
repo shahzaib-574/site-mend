@@ -2,11 +2,12 @@
 
 ## System shape
 
-SiteMend is a web SaaS with an Android companion. Scanning runs on isolated cloud
-workers, never on the mobile device or the web request process.
+SiteMend currently ships a web foundation and targets an Android companion in a
+later phase. Production scanning is designed to run on isolated cloud workers,
+never on the mobile device or the web request process.
 
 ```text
-Next.js web / Android companion
+Current Next.js web / planned Android companion
               |
  API, admission, and distributed limits
               |
@@ -21,10 +22,11 @@ Next.js web / Android companion
  findings, scores, fixes, snapshots, alerts
 ```
 
-## Proposed stack
+## Current and candidate stack
 
 - Next.js and TypeScript for the web experience
-- React Native/Expo for Android
+- Android decision gate between a Trusted Web Activity/PWA shell and a native
+  React Native/Expo client; neither is selected or implemented yet
 - Fastify or NestJS for the long-lived API boundary
 - PostgreSQL for projects, scans, findings, tasks, and entitlements
 - Redis/BullMQ for durable work scheduling
@@ -72,10 +74,11 @@ report storage or authenticated authorization. The API strictly decodes crawl
 evidence, recomputes the deterministic audit, verifies the worker copy, and then
 rebuilds completed results field by field. Unknown, contradictory, or malformed
 worker results receive a generic unavailable response. The API never exposes
-BullMQ `returnvalue` directly, crawl transport fields, HTML, hashes, headers,
-failure details, page-authored text excerpts, non-public canonical targets, or
-scores. BullMQ's age/count removal is lazy, so configured retention windows are
-not hard TTLs.
+BullMQ `returnvalue` directly, crawl transport fields, HTML, hashes, raw header
+blocks, failure details, page-authored text excerpts, non-public canonical
+targets, or scores. A small allowlist of normalized signals, such as effective
+indexing directives, can appear as finding evidence. BullMQ's age/count removal
+is lazy, so configured retention windows are not hard TTLs.
 
 The `/scan` document is no-store, no-referrer, noindex, frame-denied, and free of
 ads, analytics, pixels, and external report resources. Client polling is
@@ -84,6 +87,31 @@ a fixed API path and carry the capability only in an authorization header that
 the edge and observability stack must demonstrably redact. The raw URL
 entry is normalized before transmission; its path, query, and fragment are not
 stored in the UI, navigation, or request body.
+
+The scan entry and report create a hard third-party boundary. The bearer exists
+in the scan-entry window after the create response and before navigation, so the
+entry document itself must be isolated: `/` is permanently ad-free and receives
+the same self-only, no-off-origin resource CSP as every current route. A
+successful scan opens `/scan#<capability>` as a new document instead of retaining
+the homepage's client runtime. Advertising, analytics, or consent code must never
+be added to the root layout because a root script would also execute on `/scan`
+and could read its fragment. Any future approved third-party code is confined to
+an explicit content-route layout; its scan CTA must use a native full-document
+link into `/` before the user can submit. `/scan`, `/api/**`,
+legal/contact/consent, authentication, account, dashboard, form, progress, error,
+and private-result surfaces stay outside that layout. The report CSP also denies
+off-origin connections and subresources. This boundary complements
+authorization-header redaction; it does not replace it.
+
+Public release identity is server-only runtime configuration. Until a final HTTPS
+origin, operator, contact, and jurisdiction pass validation, SiteMend emits no
+canonical host or sitemap URL. Public pages emit `noindex, nofollow` metadata and
+remain crawlable so compliant crawlers can observe it. `/scan` likewise remains
+crawlable solely so its permanent response-level `noindex` can be observed, while
+`/api/**` is disallowed. Preview hosting should add access control when
+non-discovery is required because robots directives are not access control.
+Information pages describe only implemented behavior and do not invent an
+operator, processor, retention guarantee, or legal jurisdiction.
 
 Browser workers are isolated from application credentials and the private network,
 with CPU, memory, wall-clock, redirect, request, and response limits. Deep or

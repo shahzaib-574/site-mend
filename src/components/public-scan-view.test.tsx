@@ -234,8 +234,8 @@ describe("PublicScanView", () => {
     let firstSignal: AbortSignal | undefined;
     let resolveFirst: ((response: Response) => void) | undefined;
     const secondTarget = {
-      hostname: "second.example",
-      origin: "https://second.example/",
+      hostname: "second-site.com",
+      origin: "https://second-site.com/",
     };
     const fetchMock = vi
       .fn()
@@ -264,7 +264,7 @@ describe("PublicScanView", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(
-      screen.getByRole("heading", { name: /checking second\.example/i }),
+      screen.getByRole("heading", { name: /checking second-site\.com/i }),
     ).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent("Checking example.com");
     const secondHeaders = new Headers(
@@ -335,6 +335,7 @@ describe("PublicScanView", () => {
     expect(serverMarkup).toContain("JavaScript is required");
     expect(serverMarkup).toContain("No status request was made");
     expect(serverMarkup).toContain('href="/#website-check"');
+    expect(serverMarkup).toContain('data-navigation="new-document"');
 
     render(<PublicScanView />);
     await advance(0);

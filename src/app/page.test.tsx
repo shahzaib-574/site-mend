@@ -1,14 +1,39 @@
 import { render, screen, within } from "@testing-library/react";
 import axe from "axe-core";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HomePage } from "./page";
+import { generateMetadata, HomePage } from "./page";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
 describe("Home", () => {
+  beforeEach(() => {
+    vi.stubEnv("SITE_CONTACT_EMAIL", "");
+    vi.stubEnv("SITE_LEGAL_JURISDICTION", "");
+    vi.stubEnv("SITE_OPERATOR_NAME", "");
+    vi.stubEnv("SITE_ORIGIN", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("adds the home canonical only for complete release identity", () => {
+    expect(generateMetadata().alternates).toBeUndefined();
+
+    vi.stubEnv("SITE_CONTACT_EMAIL", "privacy@sitemend.app");
+    vi.stubEnv("SITE_LEGAL_JURISDICTION", "Pakistan");
+    vi.stubEnv("SITE_OPERATOR_NAME", "SiteMend Labs");
+    vi.stubEnv("SITE_ORIGIN", "https://sitemend.app");
+
+    expect(generateMetadata()).toMatchObject({
+      alternates: { canonical: "https://sitemend.app/" },
+      title: { absolute: "SiteMend — Clear public-homepage health checks" },
+    });
+  });
+
   it("exposes a complete landmark and heading structure", () => {
     render(<HomePage />);
 
@@ -29,14 +54,14 @@ describe("Home", () => {
 
     const navigation = screen.getByRole("navigation", { name: /primary navigation/i });
     const expectedLinks = [
-      ["How it works", "#how-it-works"],
-      ["What we check", "#what-we-check"],
-      ["Why SiteMend", "#why-sitemend"],
+      ["How it works", "/#how-it-works"],
+      ["What we check", "/#what-we-check"],
+      ["Why SiteMend", "/#why-sitemend"],
     ];
 
     for (const [name, href] of expectedLinks) {
       expect(within(navigation).getByRole("link", { name })).toHaveAttribute("href", href);
-      expect(document.querySelector(href)).toBeInTheDocument();
+      expect(document.querySelector(new URL(href, "https://sitemend.test").hash)).toBeInTheDocument();
     }
 
     expect(
@@ -44,12 +69,34 @@ describe("Home", () => {
         .getAllByRole("link")
         .map((link) => link.getAttribute("href")),
     ).toEqual([
-      "#top",
-      "#how-it-works",
-      "#what-we-check",
-      "#why-sitemend",
-      "#website-check",
+      "/",
+      "/#how-it-works",
+      "/#what-we-check",
+      "/#why-sitemend",
+      "/#website-check",
     ]);
+    expect(
+      within(screen.getByRole("banner"))
+        .getAllByRole("link")
+        .every((link) => link.dataset.navigation === "new-document"),
+    ).toBe(true);
+  });
+
+  it("links the shared footer to public information pages", () => {
+    render(<HomePage />);
+
+    const navigation = screen.getByRole("navigation", { name: /footer navigation/i });
+
+    for (const [name, href] of [
+      ["About", "/about"],
+      ["Contact", "/contact"],
+      ["Privacy", "/privacy"],
+      ["Terms", "/terms"],
+    ]) {
+      const link = within(navigation).getByRole("link", { name });
+      expect(link).toHaveAttribute("href", href);
+      expect(link).toHaveAttribute("data-navigation", "new-document");
+    }
   });
 
   it("states the bounded live scope before submission and labels roadmap work", () => {
