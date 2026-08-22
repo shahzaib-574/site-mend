@@ -1,6 +1,6 @@
 # SiteMend
 
-**Scan. Understand. Fix. Verify.**
+**Scan. Understand. Fix. Verify. Monitor.**
 
 SiteMend is an open-source, plain-language website health checker. It brings
 search visibility, technical reliability, performance, content structure, and
@@ -10,7 +10,7 @@ owners with SEO jargon.
 ## Product promise
 
 Paste a website, see what is broken, understand what matters most, follow an
-exact fix, and verify the improvement.
+exact fix, verify the improvement, and monitor for important regressions.
 
 ## Status
 
