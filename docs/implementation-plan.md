@@ -26,9 +26,12 @@ month**.
 - A completed status can expose the nine-check report through a versioned,
   allowlisted, ephemeral public result; queued, running, and failed states remain
   metadata-only.
-- Multi-page crawling, browser rendering, scoring, durable result persistence,
-  and a public results UI do not exist yet. Enabling intake remains blocked until
-  the worker is deployed with its required isolation and monitoring controls.
+- A separately gated public experience can submit a normalized origin, show
+  honest queued/running progress, and explain the nine-check result through a
+  temporary bearer-safe route. Both public UI and intake remain disabled by default.
+- Multi-page crawling, browser rendering, scoring, and durable result persistence
+  do not exist yet. Enabling intake remains blocked until the worker is deployed
+  with its required isolation and monitoring controls.
 
 ## Experience principles
 
@@ -152,8 +155,9 @@ Progress: `homepage-v1` implements the first nine checks for status, HTTPS,
 robots access, redirects, title, description, canonical, headings, and indexing
 directives. The worker emits complete finding contracts, and the status API can
 publish only a strict allowlisted projection of that report for completed jobs.
-Grouping, scoring, durable persistence, a results interface, and the remaining
-checks are still open.
+Grouping, scoring, durable persistence, and the remaining checks are still open.
+The public interface orders current failed-check findings by their existing
+priority but does not calculate a score.
 
 ### Phase 3 - performance and AI readiness (weeks 7-8)
 
@@ -168,6 +172,12 @@ Exit: every high-severity result contains reproducible evidence.
   detail, fix instructions, responsive behavior, and advanced evidence
 
 Exit: a non-expert identifies and understands the first fix without help.
+
+Progress: the first feature-gated slice implements safe submission, honest
+queued/running states, controlled recovery, a top-five-first homepage report,
+progressive evidence disclosure, responsive WCAG 2.2 AA behavior, and an
+explicit nine-derived-check scope statement. Issue detail actions, rescanning,
+multi-page/performance/AEO/GEO coverage, and authenticated saving remain.
 
 ### Phase 5 - verify and monitor (weeks 11-12)
 

@@ -22,7 +22,7 @@ function createRuntime() {
   const submit = vi.fn(async () => ({
     scanId,
     status: "queued" as const,
-    statusUrl: `/api/scans/${scanId}`,
+    statusUrl: "/api/scans/status",
     target: { hostname: "example.com", origin: "https://example.com/" },
   }));
   const getStatus = vi.fn(async () => ({
@@ -60,10 +60,15 @@ describe("handleCreateScanRequest", () => {
 
     expect(response.status).toBe(202);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get("location")).toBe(`/api/scans/${scanId}`);
+    expect(response.headers.get("location")).toBe("/api/scans/status");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-    await expect(response.json()).resolves.toMatchObject({
-      data: { scanId, status: "queued" },
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        scanId,
+        status: "queued",
+        statusUrl: "/api/scans/status",
+        target: { hostname: "example.com", origin: "https://example.com/" },
+      },
       message: "Your website health check is queued.",
     });
     expect(runtime.service.submit).toHaveBeenCalledExactlyOnceWith(
@@ -185,24 +190,52 @@ describe("handleCreateScanRequest", () => {
     expect(body).not.toContain("secret");
     expect(body).not.toContain("private-host");
   });
+
+  it("rebuilds the create response without unknown service fields", async () => {
+    const runtime = createRuntime();
+    vi.mocked(runtime.service.submit).mockResolvedValue({
+      scanId,
+      status: "queued",
+      statusUrl: `/api/scans/${scanId}`,
+      target: { hostname: "example.com", origin: "https://example.com/" },
+      internalDetail: "redis-secret",
+    } as never);
+
+    const response = await handleCreateScanRequest(
+      createPostRequest(JSON.stringify({ url: "example.com" })),
+      () => runtime,
+    );
+    const data = await response.json();
+    const body = JSON.stringify(data);
+
+    expect(response.status).toBe(202);
+    expect(response.headers.get("location")).toBe("/api/scans/status");
+    expect(data.data.statusUrl).toBe("/api/scans/status");
+    expect(body).not.toContain(`/api/scans/${scanId}`);
+    expect(body).not.toContain("internalDetail");
+    expect(body).not.toContain("redis-secret");
+  });
 });
 
 describe("handleGetScanRequest", () => {
-  function createGetRequest(): Request {
-    return new Request(`https://sitemend.example/api/scans/${scanId}`, {
-      headers: { "X-SiteMend-Client-IP": "203.0.113.9" },
+  function createGetRequest(authorization = `Bearer ${scanId}`): Request {
+    return new Request("https://sitemend.example/api/scans/status", {
+      headers: {
+        Authorization: authorization,
+        "X-SiteMend-Client-IP": "203.0.113.9",
+      },
     });
   }
 
   it("returns the small public scan status", async () => {
     const runtime = createRuntime();
     const response = await handleGetScanRequest(
-      createGetRequest(),
-      scanId,
+      createGetRequest(`bearer ${scanId}`),
       () => runtime,
     );
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("vary")).toBe("Authorization");
     await expect(response.json()).resolves.toEqual({
       data: {
         queuedAt: "2026-08-21T12:00:00.000Z",
@@ -234,7 +267,6 @@ describe("handleGetScanRequest", () => {
 
     const response = await handleGetScanRequest(
       createGetRequest(),
-      scanId,
       () => runtime,
     );
 
@@ -265,7 +297,6 @@ describe("handleGetScanRequest", () => {
 
     const response = await handleGetScanRequest(
       createGetRequest(),
-      scanId,
       () => runtime,
     );
     const body = JSON.stringify(await response.json());
@@ -277,15 +308,46 @@ describe("handleGetScanRequest", () => {
     expect(body).not.toContain("html");
   });
 
-  it("returns 404 without initializing runtime for an invalid scan ID", async () => {
+  it("returns 404 without initializing runtime for a missing bearer", async () => {
     const provideRuntime = vi.fn(() => createRuntime());
     const response = await handleGetScanRequest(
-      createGetRequest(),
-      "../../private",
+      new Request("https://sitemend.example/api/scans/status"),
       provideRuntime,
     );
 
     expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "SCAN_NOT_FOUND",
+        message: "That scan could not be found.",
+      },
+    });
+    expect(provideRuntime).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "Basic scan-11111111-1111-4111-8111-111111111111",
+    "Bearer ../../private",
+    "Bearer scan-11111111-1111-1111-8111-111111111111",
+    "Bearer scan-11111111-1111-4111-8111-11111111111A",
+    "Bearer  scan-11111111-1111-4111-8111-111111111111",
+    `Bearer ${"a".repeat(4_096)}`,
+  ])("rejects a malformed bearer without runtime work: %s", async (authorization) => {
+    const provideRuntime = vi.fn();
+
+    const response = await handleGetScanRequest(
+      createGetRequest(authorization),
+      provideRuntime,
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("vary")).toBe("Authorization");
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "SCAN_NOT_FOUND",
+        message: "That scan could not be found.",
+      },
+    });
     expect(provideRuntime).not.toHaveBeenCalled();
   });
 
@@ -295,7 +357,6 @@ describe("handleGetScanRequest", () => {
 
     const response = await handleGetScanRequest(
       createGetRequest(),
-      scanId,
       () => runtime,
     );
 

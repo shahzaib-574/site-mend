@@ -193,6 +193,24 @@ body {
   box-shadow: 0 1px 0 rgb(16 26 23 / 18%);
 }
 
+@media (max-width: 39.999rem) {
+  .nav-link {
+    padding-inline: 0.2rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+}
+
+.primary-action:disabled,
+.secondary-action:disabled {
+  border-color: var(--control-border);
+  background: var(--surface-inset);
+  box-shadow: none;
+  color: var(--muted);
+  cursor: wait;
+  transform: none;
+}
+
 .action-arrow {
   transition: transform 160ms ease-out;
 }
@@ -415,6 +433,12 @@ body {
   border-color: var(--danger);
 }
 
+.website-field:disabled {
+  background: var(--surface-inset);
+  color: var(--muted);
+  cursor: wait;
+}
+
 .scan-submit {
   min-height: 3.5rem;
   padding-inline: 1.35rem;
@@ -431,6 +455,118 @@ body {
 
 .user-address {
   overflow-wrap: anywhere;
+}
+
+.report-header {
+  background: rgb(238 242 236 / 92%);
+}
+
+.report-page {
+  min-height: calc(100vh - 5rem);
+  padding: 0.01rem 0 4rem;
+}
+
+.report-empty,
+.report-progress-panel {
+  width: calc(100% - 2rem);
+  max-width: 48rem;
+  margin: clamp(2rem, 8vw, 5rem) auto 0;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.report-state-title {
+  max-width: 42rem;
+  margin-top: 0.75rem;
+  color: var(--ink);
+  font-size: clamp(1.85rem, 7vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.report-state-copy {
+  max-width: 42rem;
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.report-progress {
+  display: block;
+  width: 100%;
+  height: 0.9rem;
+  overflow: hidden;
+  appearance: none;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--surface-inset);
+  box-shadow: var(--shadow-inset);
+  accent-color: var(--accent);
+}
+
+.report-progress::-webkit-progress-bar {
+  background: var(--surface-inset);
+}
+
+.report-progress::-webkit-progress-value {
+  background: var(--accent);
+}
+
+.report-progress::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.report-steps {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.report-step {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-strong);
+  padding: 0.65rem 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.report-step-marker {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.report-step[data-state="complete"] {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.report-step[data-state="current"] {
+  border: 2px solid var(--accent);
+  background: var(--surface-inset);
+  box-shadow: var(--shadow-inset);
+  color: var(--accent-strong);
+}
+
+.report-step[data-state="upcoming"] {
+  color: var(--muted);
+}
+
+details > summary {
+  list-style-position: outside;
 }
 
 @keyframes status-enter {
@@ -484,5 +620,21 @@ body {
 
   .skip-link:not(:focus-visible) {
     transform: translateY(calc(-100% - 1.5rem));
+  }
+}
+
+@media (forced-colors: active) {
+  .soft-panel,
+  .soft-card,
+  .soft-inset,
+  .scan-shell,
+  .report-step,
+  .report-progress {
+    box-shadow: none;
+  }
+
+  .report-step[data-state="current"] {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
   }
 }

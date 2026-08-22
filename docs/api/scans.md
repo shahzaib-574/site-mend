@@ -11,6 +11,7 @@ Copy `.env.example` to a local environment file and provide:
 | Variable | Requirement |
 | --- | --- |
 | `SCAN_INTAKE_ENABLED` | Must be exactly `true`; otherwise valid intake and status requests fail closed with `503`. |
+| `PUBLIC_SCAN_UI_ENABLED` | Must also be exactly `true` before the public live-scan interface appears. This server-only presentation gate cannot enable intake. |
 | `REDIS_URL` | A durable `redis://` or TLS `rediss://` connection URL. |
 | `SCAN_TRUSTED_CLIENT_IP_HEADER` | One header set by a trusted proxy to a single canonical IPv4 or IPv6 address. |
 | `SCAN_RATE_LIMIT_KEY_SECRET` | At least 32 random bytes used to HMAC rate-limit identities. |
@@ -22,6 +23,15 @@ worker does not enable intake, and enabling intake does not start a worker.
 The trusted reverse proxy must strip the named header from inbound traffic and
 replace it with the canonical client address. Never configure a pass-through
 header that a browser can supply directly.
+
+Enable services in this order: isolated worker and monitoring, intake/status
+smoke test, then public UI. Roll back the UI gate first. Both UI and intake gates
+remain `false` in the committed example environment.
+
+Before enabling intake, verify that the edge, application access logger, APM,
+tracing, and support tooling redact the `Authorization` header. Logging a status
+bearer grants report access; a written redaction policy without an observed
+production-like verification is not sufficient.
 
 ## Create a scan
 
@@ -41,7 +51,7 @@ a `Location` header:
   "data": {
     "scanId": "scan-11111111-1111-4111-8111-111111111111",
     "status": "queued",
-    "statusUrl": "/api/scans/scan-11111111-1111-4111-8111-111111111111",
+    "statusUrl": "/api/scans/status",
     "target": {
       "hostname": "example.com",
       "origin": "https://example.com/"
@@ -57,8 +67,15 @@ authorization data are never placed in the queue payload.
 ## Read scan status
 
 ```http
-GET /api/scans/scan-11111111-1111-4111-8111-111111111111
+GET /api/scans/status
+Authorization: Bearer scan-11111111-1111-4111-8111-111111111111
 ```
+
+The status endpoint is fixed: the bearer must never be put in a request path or
+query string. Missing, malformed, non-v4, or non-lowercase bearer values return
+the same controlled `404` envelope as an unknown or removed job. Status responses
+are `no-store` and vary on `Authorization`; compliant access logging must still
+redact the header.
 
 Every status response exposes only `queued`, `running`, `completed`, or `failed`,
 the public target origin, the scan ID, and the queue timestamp. `queued`,
@@ -99,11 +116,42 @@ outcome, fails closed with the same generic `503` response used for unavailable
 scan infrastructure. The final serialized public result is capped at 256 KiB;
 the cap is above the maximum currently reviewed producer-shaped report.
 
-Unknown or removed jobs and syntactically invalid scan IDs return the same `404`
-response. A status URL is an ephemeral bearer link: anyone who obtains it can
+Unknown or removed jobs and missing or malformed bearer headers return the same
+`404` response. The scan ID is an ephemeral bearer capability: anyone who obtains it can
 read that scan's public metadata and, once completed, its allowlisted report. It
 must not be treated as durable storage or shared as if it were an authenticated
 project URL.
+
+## Public scan experience
+
+When both `PUBLIC_SCAN_UI_ENABLED` and `SCAN_INTAKE_ENABLED` are exactly `true`,
+the homepage can submit the locally normalized public origin and open `/scan`
+with the validated scan ID in the URL fragment (`/scan#scan-…`). A fragment is
+not sent in the document request or HTTP referrer, which keeps the bearer ID out
+of the document URL seen by hosting and proxy logs. The client sends that strictly
+decoded lowercase UUIDv4 only in a redacted `Authorization: Bearer` header to the
+fixed `/api/scans/status` endpoint; it never follows the `statusUrl` returned by
+the create response or places the ID in an API path or query.
+
+The UI strictly decodes bounded response data, polls with one request in flight,
+pauses while hidden or offline, backs off after transient failures, and stops at
+a terminal state. It shows no invented percentage, ETA, score, or partial
+evidence. A completed view explicitly describes its scope as nine derived
+homepage checks and does not imply performance, field-data, rendered-page,
+multi-page, AEO, or GEO coverage.
+
+Create requests omit credentials and referrers, reject redirects, have a bounded
+client timeout, and are never retried automatically. Every non-`202` response is
+size-bounded and must match the exact public error envelope and its allowed
+status/code pairing. Because a network failure, timeout, or unreadable response
+can occur after the server accepted a job, the UI does not claim that no scan was
+started in those ambiguous cases.
+
+The `/scan` document is `no-store`, `no-referrer`, frame-denied, and excluded
+from indexing and archives. It contains no advertising, analytics, third-party
+pixels, remote report images, or outgoing report links. Findings and evidence
+are rendered as text only. Disabling the UI gate restores the address-only
+preview and makes direct `/scan` visits fail closed without a status request.
 
 ## Distributed limits
 

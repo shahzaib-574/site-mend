@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { auditHomepage } from "@/audit/homepage/audit-homepage";
 import { HomepageEvidenceParser } from "@/audit/homepage/homepage-evidence-parser";
 import type { HomepageAuditInput } from "@/audit/homepage/types";
+import { decodePublicScanStatusEnvelope } from "@/lib/public-scan-client";
 import type { HomepageCrawlResult } from "@/worker/crawler/homepage-crawler";
 import type { RedirectEvidence } from "@/worker/crawler/url-evidence";
 
@@ -134,6 +135,27 @@ function replaceAuditCheck(
 }
 
 describe("projectPublicHomepageResult", () => {
+  it("round-trips fetched and robots-blocked projections through the browser decoder", () => {
+    for (const raw of [createFetchedResult(), createBlockedResult()]) {
+      const result = projectPublicHomepageResult(raw, expectation);
+      const envelope = decodePublicScanStatusEnvelope({
+        data: {
+          queuedAt: "2026-08-21T12:00:00.000Z",
+          result,
+          scanId,
+          status: "completed",
+          target: { hostname: "example.com", origin: requestedUrl },
+        },
+      });
+
+      expect(envelope.data).toMatchObject({
+        result: { outcome: result.outcome },
+        scanId,
+        status: "completed",
+      });
+    }
+  });
+
   it("recomputes the report and returns only the exact public envelope", () => {
     const html =
       "<html><head><title>Visit https://example.com/?ref=home &lt;html&gt;private&lt;/html&gt;</title><meta name=description content='Authorization: Bearer private-token'><link rel=canonical href='https://example.com/'></head><body><h1>Website health</h1></body></html>";

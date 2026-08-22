@@ -5,8 +5,12 @@ import { RateLimitExceededError } from "./errors";
 import { getScanRuntime, type ScanRuntime } from "./runtime";
 
 const MAX_CREATE_SCAN_BODY_BYTES = 4_096;
+const PUBLIC_SCAN_STATUS_PATH = "/api/scans/status";
+const BEARER_PREFIX_LENGTH = "Bearer ".length;
+const PUBLIC_SCAN_ID_LENGTH =
+  "scan-00000000-0000-4000-8000-000000000000".length;
 const scanIdPattern =
-  /^scan-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  /^scan-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 type ScanRuntimeProvider = () => ScanRuntime;
 
@@ -34,6 +38,44 @@ function jsonResponse(
   headers.set("X-Content-Type-Options", "nosniff");
 
   return Response.json(body, { headers, status });
+}
+
+function statusJsonResponse(
+  body: unknown,
+  status: number,
+  additionalHeaders?: HeadersInit,
+): Response {
+  const headers = new Headers(additionalHeaders);
+  headers.set("Vary", "Authorization");
+
+  return jsonResponse(body, status, headers);
+}
+
+function scanNotFoundResponse(): Response {
+  return statusJsonResponse(
+    {
+      error: {
+        code: "SCAN_NOT_FOUND",
+        message: "That scan could not be found.",
+      },
+    },
+    404,
+  );
+}
+
+function readBearerScanId(request: Request): string | null {
+  const authorization = request.headers.get("authorization");
+
+  if (
+    authorization === null ||
+    authorization.length !== BEARER_PREFIX_LENGTH + PUBLIC_SCAN_ID_LENGTH ||
+    authorization.slice(0, BEARER_PREFIX_LENGTH).toLowerCase() !== "bearer "
+  ) {
+    return null;
+  }
+
+  const scanId = authorization.slice(BEARER_PREFIX_LENGTH);
+  return scanIdPattern.test(scanId) ? scanId : null;
 }
 
 async function readBoundedBody(request: Request): Promise<Uint8Array> {
@@ -210,14 +252,23 @@ export async function handleCreateScanRequest(
       runtime.clientIpHeader,
     );
     const submitted = await runtime.service.submit(input, clientIp);
+    const publicSubmission = {
+      scanId: submitted.scanId,
+      status: submitted.status,
+      statusUrl: PUBLIC_SCAN_STATUS_PATH,
+      target: {
+        hostname: submitted.target.hostname,
+        origin: submitted.target.origin,
+      },
+    };
 
     return jsonResponse(
       {
-        data: submitted,
+        data: publicSubmission,
         message: "Your website health check is queued.",
       },
       202,
-      { Location: submitted.statusUrl },
+      { Location: PUBLIC_SCAN_STATUS_PATH },
     );
   } catch (error) {
     return errorResponse(error);
@@ -226,20 +277,11 @@ export async function handleCreateScanRequest(
 
 export async function handleGetScanRequest(
   request: Request,
-  scanId: string,
   provideRuntime: ScanRuntimeProvider = getScanRuntime,
 ): Promise<Response> {
-  if (!scanIdPattern.test(scanId)) {
-    return jsonResponse(
-      {
-        error: {
-          code: "SCAN_NOT_FOUND",
-          message: "That scan could not be found.",
-        },
-      },
-      404,
-    );
-  }
+  const scanId = readBearerScanId(request);
+
+  if (scanId === null) return scanNotFoundResponse();
 
   try {
     const runtime = provideRuntime();
@@ -250,19 +292,13 @@ export async function handleGetScanRequest(
     const scan = await runtime.service.getStatus(scanId, clientIp);
 
     if (scan === null) {
-      return jsonResponse(
-        {
-          error: {
-            code: "SCAN_NOT_FOUND",
-            message: "That scan could not be found.",
-          },
-        },
-        404,
-      );
+      return scanNotFoundResponse();
     }
 
-    return jsonResponse({ data: scan }, 200);
+    return statusJsonResponse({ data: scan }, 200);
   } catch (error) {
-    return errorResponse(error);
+    const response = errorResponse(error);
+    response.headers.set("Vary", "Authorization");
+    return response;
   }
 }

@@ -71,7 +71,7 @@ describe("ScanJobService", () => {
     ).resolves.toEqual({
       scanId: "scan-11111111-1111-4111-8111-111111111111",
       status: "queued",
-      statusUrl: "/api/scans/scan-11111111-1111-4111-8111-111111111111",
+      statusUrl: "/api/scans/status",
       target: {
         hostname: "example.com",
         origin: "https://example.com/",
@@ -158,6 +158,20 @@ describe("ScanJobService", () => {
     await expect(
       service.submit("https://example.com", "203.0.113.9"),
     ).rejects.toThrow("unexpected target");
+    expect(dependencies.queue.enqueue).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "11111111-1111-1111-8111-111111111111",
+    "11111111-1111-4111-8111-11111111111A",
+  ])("rejects a generated ID outside lowercase UUIDv4: %s", async (generatedId) => {
+    const dependencies = createDependencies();
+    dependencies.createId = () => generatedId;
+    const service = new ScanJobService(dependencies);
+
+    await expect(
+      service.submit("https://example.com", "203.0.113.9"),
+    ).rejects.toThrow("invalid ID");
     expect(dependencies.queue.enqueue).not.toHaveBeenCalled();
   });
 
