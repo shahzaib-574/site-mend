@@ -18,10 +18,11 @@ month**.
 - A feature-gated, Redis-rate-limited BullMQ intake and public status contract are
   implemented but disabled by default.
 - A feature-gated standalone worker can safely fetch robots.txt and one homepage,
-  follow re-admitted redirects, and return bounded metadata/hash evidence.
-- Multi-page crawling, browser rendering, audit findings, persistence, and public
-  result delivery do not exist yet. Enabling intake remains blocked until the
-  worker is deployed with its required isolation and monitoring controls.
+  follow re-admitted redirects, stream bounded document evidence, and run nine
+  versioned deterministic homepage checks.
+- Multi-page crawling, browser rendering, scoring, persistence, and public result
+  delivery do not exist yet. Enabling intake remains blocked until the worker is
+  deployed with its required isolation and monitoring controls.
 
 ## Experience principles
 
@@ -137,6 +138,11 @@ implemented. Internal-link discovery and the owned-site 25-page crawl remain.
   finding grouping, score calculation, and golden test fixtures
 
 Exit: at least 25 deterministic checks with regression tests.
+
+Progress: `homepage-v1` implements the first nine checks for status, HTTPS,
+robots access, redirects, title, description, canonical, headings, and indexing
+directives. The worker emits complete finding contracts, but grouping, scoring,
+persistence, and the remaining checks are still open.
 
 ### Phase 3 - performance and AI readiness (weeks 7-8)
 

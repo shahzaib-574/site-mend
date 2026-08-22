@@ -1,6 +1,7 @@
 import type { Job } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
 
+import { auditHomepage } from "../audit/homepage/audit-homepage";
 import {
   SCAN_JOB_NAME,
   type ScanJobPayload,
@@ -19,13 +20,22 @@ const payload: ScanJobPayload = {
 };
 
 const result: HomepageCrawlResult = {
+  audit: auditHomepage({
+    blockedAt: "https://example.com/",
+    document: null,
+    finalUrl: null,
+    redirects: [],
+    requestedUrl: "https://example.com/",
+    robots: [],
+    statusCode: null,
+  }),
   completedAt: "2026-08-21T12:01:00.000Z",
   homepage: null,
   blockedAt: "https://example.com/",
   outcome: "blocked-by-robots",
   robots: [],
   scanId: payload.scanId,
-  schemaVersion: 1,
+  schemaVersion: 2,
 };
 
 function job(

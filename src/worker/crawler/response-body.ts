@@ -49,6 +49,23 @@ export function readMediaType(headers: HttpResponseHeaders): string | null {
   return contentType.split(";", 1)[0].trim().toLowerCase() || null;
 }
 
+export function readCharacterEncoding(
+  headers: HttpResponseHeaders,
+): string | null {
+  const contentType = readSingleHeader(headers, "content-type");
+
+  if (!contentType) {
+    return null;
+  }
+
+  const match =
+    /(?:^|;)\s*charset\s*=\s*(?:"([^"]+)"|'([^']+)'|([^;\s]+))/i.exec(
+      contentType,
+    );
+
+  return (match?.[1] ?? match?.[2] ?? match?.[3])?.trim() || null;
+}
+
 function assertIdentityEncoding(headers: HttpResponseHeaders): void {
   const encoding = readSingleHeader(headers, "content-encoding")
     ?.trim()
@@ -91,6 +108,7 @@ export async function readBoundedBody(
   options: {
     capture: boolean;
     maxBytes: number;
+    onChunk?: (chunk: Uint8Array) => void;
     signal: AbortSignal;
   },
 ): Promise<BodyEvidence> {
@@ -123,6 +141,7 @@ export async function readBoundedBody(
       }
 
       hash.update(chunk);
+      options.onChunk?.(chunk);
 
       if (options.capture) {
         captured.push(chunk);
