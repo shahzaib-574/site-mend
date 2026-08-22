@@ -6,6 +6,7 @@ describe("product contract", () => {
   it("keeps the product name and action-oriented promise explicit", () => {
     expect(product.name).toBe("SiteMend");
     expect(product.tagline).toContain("Fix");
+    expect(product.tagline).toContain("Monitor");
     expect(product.promise).toContain("next fix");
   });
 });
