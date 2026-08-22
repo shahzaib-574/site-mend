@@ -64,7 +64,8 @@ Title and description lengths are retained as bounded advanced evidence, not use
 as rigid pass/fail thresholds. A missing canonical is optional because canonical
 markup is a recommendation, not an indexability requirement. A canonical pointing
 elsewhere is medium-confidence guidance because cross-page canonicalization can be
-intentional.
+intentional. Title, description, and canonical tags placed after an explicit body
+start are not credited; robots meta directives remain effective in the body.
 
 ## Scan admission gate
 

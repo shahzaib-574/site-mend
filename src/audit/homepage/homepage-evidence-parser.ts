@@ -226,6 +226,7 @@ export class HomepageEvidenceParser {
     | { accumulator: NormalizedTextAccumulator; level: HeadingLevel }
     | undefined;
   private activeTitle: NormalizedTextAccumulator | undefined;
+  private bodyStarted = false;
   private canonicalCount = 0;
   private readonly canonicals: CanonicalEntryEvidence[] = [];
   private descriptionCount = 0;
@@ -449,7 +450,16 @@ export class HomepageEvidenceParser {
       return;
     }
 
+    if (name === "body") {
+      this.bodyStarted = true;
+      return;
+    }
+
     if (name === "title") {
+      if (this.bodyStarted) {
+        return;
+      }
+
       this.finishTitle();
       this.titleCount += 1;
       this.activeTitle = new NormalizedTextAccumulator(MAX_TITLE_LENGTH);
@@ -469,7 +479,7 @@ export class HomepageEvidenceParser {
       const metaName = attribute(tag, "name")?.trim().toLowerCase();
       const content = attribute(tag, "content") ?? "";
 
-      if (metaName === "description") {
+      if (metaName === "description" && !this.bodyStarted) {
         const description = boundedText(content, MAX_DESCRIPTION_LENGTH);
         this.descriptionCount += 1;
 
@@ -495,6 +505,10 @@ export class HomepageEvidenceParser {
     }
 
     if (name === "link") {
+      if (this.bodyStarted) {
+        return;
+      }
+
       const rel = attribute(tag, "rel")
         ?.toLowerCase()
         .split(/\s+/u)

@@ -207,4 +207,22 @@ describe("HomepageEvidenceParser", () => {
       totalSources: 0,
     });
   });
+
+  it("does not credit head metadata after the body starts but keeps body robots rules", () => {
+    const evidence = parse(`
+      <body>
+        <title>Body title</title>
+        <meta name="description" content="Body description">
+        <link rel="canonical" href="https://example.com/">
+        <meta name="robots" content="noindex">
+        <h1>Visible heading</h1>
+      </body>
+    `);
+
+    expect(evidence.title.count).toBe(0);
+    expect(evidence.description.count).toBe(0);
+    expect(evidence.canonical.count).toBe(0);
+    expect(evidence.headings.nonEmptyCounts.h1).toBe(1);
+    expect(evidence.indexing.effectiveIndex).toBe("blocked");
+  });
 });
