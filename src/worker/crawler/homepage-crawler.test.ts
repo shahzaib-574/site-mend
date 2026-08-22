@@ -99,7 +99,7 @@ function crawler(
 }
 
 describe("HomepageCrawler", () => {
-  it("fetches robots first and returns metadata without raw HTML", async () => {
+  it("fetches robots first and returns bounded evidence without raw HTML", async () => {
     const robots = fakeResponse(200, {
       body: "User-agent: *\nAllow: /\n",
       headers: { "content-type": "text/plain; charset=utf-8" },
@@ -125,6 +125,12 @@ describe("HomepageCrawler", () => {
         body: {
           bytes: 41,
           contentType: "text/html",
+          document: {
+            title: {
+              count: 1,
+              first: { text: "Safe evidence" },
+            },
+          },
           sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
         },
         finalUrl: "https://example.com/",
@@ -132,9 +138,10 @@ describe("HomepageCrawler", () => {
       },
       outcome: "fetched",
       scanId: payload.scanId,
-      schemaVersion: 1,
+      schemaVersion: 2,
     });
-    expect(JSON.stringify(result)).not.toContain("Safe evidence");
+    expect(result.audit.checks).toHaveLength(9);
+    expect(JSON.stringify(result)).not.toContain("<html>");
     expect(robots.dispose).toHaveBeenCalled();
     expect(homepage.dispose).toHaveBeenCalled();
   });

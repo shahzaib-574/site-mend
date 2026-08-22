@@ -27,17 +27,20 @@ function response(
 
 describe("bounded response handling", () => {
   it("streams a hash and optional bounded capture", async () => {
+    const observed: string[] = [];
     const result = await readBoundedBody(
       response(["hello", " world"], { "content-length": "11" }),
       {
         capture: true,
         maxBytes: 11,
+        onChunk: (chunk) => observed.push(Buffer.from(chunk).toString()),
         signal: new AbortController().signal,
       },
     );
 
     expect(result.bytes).toBe(11);
     expect(Buffer.from(result.captured!).toString()).toBe("hello world");
+    expect(observed).toEqual(["hello", " world"]);
     expect(result.sha256).toBe(
       createHash("sha256").update("hello world").digest("hex"),
     );

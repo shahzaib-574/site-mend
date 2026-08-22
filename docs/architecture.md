@@ -37,8 +37,10 @@ feature-gated scan API validates a bounded request, requires trusted-proxy clien
 identity, applies distributed Redis limits, admits DNS, and writes a minimal
 versioned BullMQ job. A separately built Node.js worker can consume one homepage
 job, enforce robots.txt, pin an admitted address, and return bounded evidence.
-Both services remain disabled by default until the deployment isolation gate is
-satisfied. The status API reads only a small validated public projection.
+The worker streams that evidence through the first nine versioned homepage rules;
+it does not retain raw HTML. Both services remain disabled by default until the
+deployment isolation gate is satisfied. The status API reads only a small
+validated public projection and does not yet expose the audit report.
 
 ## Trust boundaries
 
@@ -67,9 +69,15 @@ filesystem, and egress controls are defined in
 ## Audit model
 
 Objective findings are produced by versioned deterministic rules. Each result
-stores rule version, evidence, affected resource, confidence, severity, and a
-verification procedure. AI can translate that evidence into plain language or
-platform guidance, but cannot invent or replace it.
+stores rule version, evidence, affected URLs, confidence, user-facing priority,
+and a verification procedure. AI can translate that evidence into plain language
+or platform guidance, but cannot invent or replace it.
+
+The implemented `homepage-v1` rules run in the standalone worker against bounded
+initial-HTML evidence. They cover final status, HTTPS, robots access, redirects,
+title, description, canonical, headings, and page-level indexing directives. No
+score is calculated yet, and rendered-page, field-data, multi-page, and AI
+readiness checks remain separate future stages.
 
 ## Initial data entities
 

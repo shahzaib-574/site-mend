@@ -12,18 +12,24 @@ The worker accepts only the exact queue schema: scan ID, request timestamp,
 normalized public origin, and hostname. It validates the job name and requires the
 BullMQ job ID to equal the scan ID.
 
-For a completed fetch it returns schema-version `1` data containing:
+For a completed fetch it returns schema-version `2` data containing:
 
 - scan ID, completion time, and `fetched` or `blocked-by-robots` outcome;
 - robots origin, found/not-found state, bounded byte count, SHA-256 digest, and
   sanitized redirect evidence;
 - homepage status, accepted media type, bounded byte count, SHA-256 digest, and
-  sanitized redirect evidence.
+  sanitized redirect evidence;
+- bounded title, description, canonical, heading, character-encoding, and
+  normalized index-directive evidence; and
+- the versioned deterministic homepage checks and their plain-language findings.
 
 URLs in evidence omit query strings and fragments. Response bodies, cookies,
 authorization data, `Set-Cookie`, arbitrary headers, DNS answers, socket
-addresses, and fetched credentials are never returned. BullMQ failures contain
-internal safe error messages, and the public status API never exposes them.
+addresses, and fetched credentials are never returned. The output can contain
+small excerpts of public title, description, and heading text plus recognized
+robots directives; it never contains the raw HTML or arbitrary response-header
+values. BullMQ failures contain internal safe error messages, and the public
+status API never exposes them.
 
 ## Enforced request boundary
 
@@ -42,7 +48,9 @@ Every network response and queue value is hostile. The worker:
 7. sends only fixed `Accept`, `Accept-Encoding: identity`, `Cache-Control`, and
    identifying `User-Agent` headers; and
 8. streams evidence and destroys the client after each request rather than
-   pooling connections across admissions.
+   pooling connections across admissions; and
+9. parses HTML as it streams, retaining only structurally capped evidence rather
+   than a copy of the document.
 
 The product token is `SiteMendBot` and the identification string links to the
 public repository. robots.txt handling follows the conservative rules below:
@@ -75,6 +83,17 @@ request it.
 | Homepage body | 2 MiB |
 | Accepted content encoding | identity only |
 | Homepage body types | `text/html`, `application/xhtml+xml` |
+| Stored title text | 300 normalized characters; first value only |
+| Stored description text | 500 normalized characters; first value only |
+| Stored heading text | 20 headings, 200 normalized characters each |
+| Stored canonical evidence | 10 entries; input URL limited to 2,048 characters |
+| Stored indexing sources | 20 normalized directive entries |
+
+Counts and effective index/follow state continue across the storage caps, so an
+attacker cannot hide a later directive by filling the retained collections. The
+parser uses the supported HTTP `charset` when present and otherwise defaults to
+UTF-8; an unsupported declared charset falls back to UTF-8 and is labeled in
+evidence. This phase does not execute JavaScript or inspect rendered-only tags.
 
 Redis destination keys are HMAC digests, not raw hostnames. Lease release uses a
 compare-and-delete Lua script so one worker cannot delete another worker's lease.

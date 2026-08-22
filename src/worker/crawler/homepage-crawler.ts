@@ -3,6 +3,12 @@ import {
   admitScanTarget,
 } from "../../server/scan-admission";
 import type { ScanJobPayload } from "../../server/scan-jobs/scan-queue";
+import { auditHomepage } from "../../audit/homepage/audit-homepage";
+import { HomepageEvidenceParser } from "../../audit/homepage/homepage-evidence-parser";
+import type {
+  HomepageAuditReport,
+  HomepageDocumentEvidence,
+} from "../../audit/homepage/types";
 import {
   abortable,
   CRAWL_LIMITS,
@@ -35,6 +41,7 @@ import {
 interface HomepageBodyEvidence {
   bytes: number;
   contentType: string;
+  document: HomepageDocumentEvidence;
   sha256: string;
 }
 
@@ -47,10 +54,11 @@ export interface FetchedHomepageEvidence {
 }
 
 interface CrawlResultBase {
+  audit: HomepageAuditReport;
   completedAt: string;
   robots: ReadonlyArray<RobotsEvidence>;
   scanId: string;
-  schemaVersion: 1;
+  schemaVersion: 2;
 }
 
 export type HomepageCrawlResult =
@@ -123,14 +131,25 @@ export class HomepageCrawler {
         }
 
         if (!robots.policy.isAllowed(target.url, SITE_MEND_ROBOTS_TOKEN)) {
+          const blockedAt = toEvidenceUrl(target.url);
+
           return {
-            blockedAt: toEvidenceUrl(target.url),
+            audit: auditHomepage({
+              blockedAt,
+              document: null,
+              finalUrl: null,
+              redirects,
+              requestedUrl,
+              robots: robotsEvidence,
+              statusCode: null,
+            }),
+            blockedAt,
             completedAt: this.clock().toISOString(),
             homepage: null,
             outcome: "blocked-by-robots",
             robots: robotsEvidence,
             scanId: payload.scanId,
-            schemaVersion: 1,
+            schemaVersion: 2,
           };
         }
 
@@ -191,33 +210,47 @@ export class HomepageCrawler {
               "application/xhtml+xml",
               "text/html",
             ]);
+            const parser = new HomepageEvidenceParser(target.url, response.headers);
             const evidence = await readBoundedBody(response, {
               capture: false,
               maxBytes: CRAWL_LIMITS.homepageBytes,
+              onChunk: (chunk) => parser.write(chunk),
               signal,
             });
             body = {
               bytes: evidence.bytes,
               contentType,
+              document: parser.finish(),
               sha256: evidence.sha256,
             };
           } else {
             readMediaType(response.headers);
           }
 
+          const homepage: FetchedHomepageEvidence = {
+            body,
+            finalUrl: toEvidenceUrl(target.url),
+            redirects,
+            requestedUrl,
+            statusCode: response.statusCode,
+          };
+
           return {
-            completedAt: this.clock().toISOString(),
-            homepage: {
-              body,
-              finalUrl: toEvidenceUrl(target.url),
+            audit: auditHomepage({
+              blockedAt: null,
+              document: body?.document ?? null,
+              finalUrl: homepage.finalUrl,
               redirects,
               requestedUrl,
+              robots: robotsEvidence,
               statusCode: response.statusCode,
-            },
+            }),
+            completedAt: this.clock().toISOString(),
+            homepage,
             outcome: "fetched",
             robots: robotsEvidence,
             scanId: payload.scanId,
-            schemaVersion: 1,
+            schemaVersion: 2,
           };
         } finally {
           await response.dispose();
