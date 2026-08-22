@@ -56,7 +56,7 @@ describe("admitRedirectTarget", () => {
 
   it("revalidates an absolute cross-origin redirect", async () => {
     const resolver = vi.fn(async (hostname: string) => {
-      if (hostname === "blocked.example") {
+      if (hostname === "blocked-site.com") {
         throw new ScanAdmissionError(
           "NON_PUBLIC_ADDRESS",
           "SiteMend can only scan websites on the public internet.",
@@ -68,9 +68,9 @@ describe("admitRedirectTarget", () => {
     const current = await admitScanTarget("https://example.com", resolver);
 
     await expect(
-      admitRedirectTarget("https://blocked.example/private", current, resolver),
+      admitRedirectTarget("https://blocked-site.com/private", current, resolver),
     ).rejects.toMatchObject({ code: "NON_PUBLIC_ADDRESS" });
-    expect(resolver).toHaveBeenLastCalledWith("blocked.example");
+    expect(resolver).toHaveBeenLastCalledWith("blocked-site.com");
   });
 
   it("blocks a redirect whose DNS answer is private", async () => {
@@ -84,7 +84,7 @@ describe("admitRedirectTarget", () => {
     const current = await admitScanTarget("https://example.com", resolver);
 
     await expect(
-      admitRedirectTarget("https://metadata.example/latest", current, resolver),
+      admitRedirectTarget("https://metadata-site.com/latest", current, resolver),
     ).rejects.toMatchObject({ code: "NON_PUBLIC_ADDRESS" });
   });
 

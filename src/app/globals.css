@@ -138,6 +138,15 @@ body {
 .footer-link {
   display: inline-flex;
   min-height: 3rem;
+  min-width: 3rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.25rem;
+}
+
+.footer-brand {
+  display: inline-flex;
+  min-height: 3rem;
   align-items: center;
 }
 
@@ -191,14 +200,6 @@ body {
 .secondary-action:active {
   transform: translateY(1px);
   box-shadow: 0 1px 0 rgb(16 26 23 / 18%);
-}
-
-@media (max-width: 39.999rem) {
-  .nav-link {
-    padding-inline: 0.2rem;
-    font-size: 0.75rem;
-    white-space: nowrap;
-  }
 }
 
 .primary-action:disabled,
@@ -388,6 +389,168 @@ body {
   color: var(--ink);
   font-family: var(--font-geist-mono), monospace;
   font-weight: 900;
+}
+
+.public-header {
+  background: rgb(238 242 236 / 92%);
+}
+
+.information-page {
+  width: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: clamp(2.5rem, 7vw, 5rem) 1rem clamp(4rem, 9vw, 7rem);
+}
+
+.information-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+}
+
+.information-hero::after {
+  position: absolute;
+  right: -5rem;
+  bottom: -7rem;
+  width: 18rem;
+  height: 18rem;
+  border: 1px solid rgb(15 118 110 / 18%);
+  border-radius: 50%;
+  background: rgb(184 244 92 / 9%);
+  content: "";
+  pointer-events: none;
+}
+
+.information-title {
+  position: relative;
+  z-index: 1;
+  max-width: 48rem;
+  margin-top: 0.85rem;
+  color: var(--ink);
+  font-size: clamp(2.35rem, 8vw, 4.75rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.information-introduction {
+  position: relative;
+  z-index: 1;
+  max-width: 46rem;
+  margin-top: 1.35rem;
+  color: var(--muted);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.75;
+}
+
+.information-content {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.information-section {
+  border-bottom: 1px solid var(--line);
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.information-section:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.information-section > h2 {
+  max-width: 42rem;
+  color: var(--ink);
+  font-size: clamp(1.4rem, 4vw, 1.85rem);
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.information-section-copy {
+  max-width: 70ch;
+  margin-top: 0.9rem;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.information-section-copy a:not(.primary-action, .secondary-action) {
+  color: var(--accent-strong);
+  font-weight: 750;
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.2em;
+}
+
+.information-section-copy a:not(.primary-action, .secondary-action):hover {
+  color: var(--ink);
+  text-decoration-thickness: 0.14em;
+}
+
+.information-section-copy > * + * {
+  margin-top: 1rem;
+}
+
+.information-section-copy strong,
+.information-callout strong {
+  color: var(--ink);
+}
+
+.information-list {
+  display: grid;
+  gap: 0.75rem;
+  padding-left: 1.3rem;
+  list-style: disc;
+}
+
+.information-list li {
+  padding-left: 0.2rem;
+}
+
+.information-list li::marker {
+  color: var(--accent-strong);
+}
+
+.information-callout {
+  border: 1px solid var(--accent);
+  border-left-width: 0.3rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-inset);
+  box-shadow: var(--shadow-inset);
+  padding: 1rem 1.1rem;
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+.contact-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.contact-grid > .information-section {
+  border-top: 1px solid var(--line);
+}
+
+.information-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.information-action {
+  width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.information-updated {
+  padding: 0.75rem 0.25rem 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 700;
 }
 
 .scan-shell {
@@ -587,6 +750,15 @@ details > summary {
     padding-right: 2rem;
     padding-left: 2rem;
   }
+
+  .information-page {
+    padding-right: 2rem;
+    padding-left: 2rem;
+  }
+
+  .information-action {
+    width: auto;
+  }
 }
 
 @media (min-width: 64rem) {
@@ -597,6 +769,10 @@ details > summary {
 
   .section-shell {
     padding: 7rem 2.5rem;
+  }
+
+  .contact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -629,7 +805,8 @@ details > summary {
   .soft-inset,
   .scan-shell,
   .report-step,
-  .report-progress {
+  .report-progress,
+  .information-callout {
     box-shadow: none;
   }
 

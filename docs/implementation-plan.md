@@ -29,6 +29,9 @@ month**.
 - A separately gated public experience can submit a normalized origin, show
   honest queued/running progress, and explain the nine-check result through a
   temporary bearer-safe route. Both public UI and intake remain disabled by default.
+- Public about, contact, privacy, and terms information; fail-closed canonical
+  release identity; crawler metadata; and third-party isolation form the current
+  web-release foundation. Advertising, analytics, and consent tags remain off.
 - Multi-page crawling, browser rendering, scoring, and durable result persistence
   do not exist yet. Enabling intake remains blocked until the worker is deployed
   with its required isolation and monitoring controls.
@@ -199,6 +202,31 @@ Exit: an agency can onboard five sites and share separate reports.
   account state, crash reporting, closed Play test, load and security testing
 
 Exit: Android users can manage urgent work without the desktop dashboard.
+
+Current platform constraint: a Trusted Web Activity is the lowest-complexity
+candidate for the first Android shell, but no stack is selected. The focused
+architecture decision waits until the PWA is useful offline and the final HTTPS
+domain, package name, Play-signing fingerprint, and Digital Asset Links are known;
+it must compare TWA limitations with a native React Native/Expo client. New apps
+and updates should target Android API 36 for the 31 August 2026 Play requirement.
+Web inventory inside a TWA uses AdSense; native Android views use AdMob and require
+a separate Mobile Ads/UMP design.
+
+### Release and monetization gates
+
+- Public web release requires an owner-confirmed custom HTTPS origin, operator,
+  privacy/support contact, jurisdiction, deployed processor list, and tested
+  retention/deletion behavior.
+- AdSense remains disabled until the live site has sufficient original content,
+  an approved real publisher ID, a Google-certified CMP for covered traffic,
+  accurate privacy disclosures, account-side site verification, and a `Ready`
+  review status.
+- Google ads never appear on scan entry, progress, reports, findings, errors,
+  forms, legal/contact/consent, authentication/account/dashboard, or capability-
+  bearing surfaces.
+- Android release requires a signed API-36 AAB, Play App Signing, final listing
+  assets/declarations, a public privacy URL, testing-track evidence, and any
+  account-specific closed-test obligation.
 
 ## Quality gates
 

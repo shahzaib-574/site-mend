@@ -100,6 +100,15 @@ are byte-bounded and must match both the exact public error envelope and the
 expected HTTP status/code pairing. Network, timeout, unreadable, and server-error
 outcomes do not claim that no job was created because acceptance can be ambiguous.
 
+The create-response bearer exists briefly in the scan-entry window before
+navigation, so entry isolation is mandatory. `/` stays third-party-free under a
+self-only resource CSP. A future monetized content document must reach it through
+a native full-document link, never a Next client transition. After a strict
+accepted response, the browser opens the local fragment-bearing report as a new
+document. This destroys the entry runtime before the capability becomes available
+to the report document. Advertising, analytics, CMP, tag-manager, or other
+third-party scripts must never be loaded by the root layout, `/`, or `/scan`.
+
 Client responses are size-bounded and strictly decoded with exact keys, known
 versions/rules, bounded text and arrays, valid timestamps, and immutable scan
 identity across polls. Unknown or malformed data becomes a generic unavailable

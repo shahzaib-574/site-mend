@@ -17,6 +17,9 @@ exact fix, verify the improvement, and monitor for important regressions.
 SiteMend is in active foundation development. See the
 [implementation plan](docs/implementation-plan.md),
 [architecture](docs/architecture.md), and [audit catalog](docs/audit-catalog.md).
+The current release performs nine deterministic checks on one public homepage;
+speed, multi-page crawling, AEO, GEO, accounts, monitoring, Android packaging,
+and advertising remain planned work.
 
 ## Development
 
@@ -38,6 +41,13 @@ The homepage crawler is built and run as a separate Node.js service. It also
 stays disabled by default. Read the
 [crawler worker security and deployment guide](docs/security/crawler-worker.md)
 before starting it or enabling public intake.
+
+Before a public web release, follow the
+[web release runbook](docs/deployment/web-release.md). Advertising is not loaded
+by the application. The
+[AdSense readiness guide](docs/monetization/adsense-readiness.md) documents the
+owner, domain, consent, content, and Google-review prerequisites; it deliberately
+does not contain a publisher ID or enable ad serving.
 
 Before opening a pull request:
 

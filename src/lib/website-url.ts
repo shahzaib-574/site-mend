@@ -12,12 +12,16 @@ export type WebsiteUrlResult =
 const blockedHostnameSuffixes = [
   ".alt",
   ".arpa",
+  ".corp",
+  ".example",
+  ".home",
   ".internal",
   ".invalid",
   ".lan",
   ".local",
   ".localdomain",
   ".localhost",
+  ".mail",
   ".onion",
   ".test",
 ];
@@ -29,7 +33,7 @@ function isIpLiteral(hostname: string) {
   return isIpv4 || isIpv6;
 }
 
-function isPublicDomain(hostname: string) {
+export function isPublicWebsiteHostname(hostname: string) {
   if (
     hostname === "localhost" ||
     hostname.endsWith(".") ||
@@ -96,7 +100,7 @@ export function normalizeWebsiteUrl(input: string): WebsiteUrlResult {
 
   const hostname = parsed.hostname.toLowerCase();
 
-  if (!isPublicDomain(hostname)) {
+  if (!isPublicWebsiteHostname(hostname)) {
     return {
       ok: false,
       message: "Enter a public domain name rather than a local address or IP.",
