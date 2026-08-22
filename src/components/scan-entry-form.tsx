@@ -1,11 +1,31 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  FormEvent,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
+import {
+  decodeCreateScanEnvelope,
+  decodePublicScanError,
+  PublicScanClientContractError,
+  readBoundedJsonResponse,
+  type PublicScanErrorCode,
+} from "@/lib/public-scan-client";
 import {
   normalizeWebsiteUrl,
   type WebsiteUrlResult,
 } from "@/lib/website-url";
+
+const LAST_NORMALIZED_ORIGIN_KEY = "sitemend:last-normalized-origin:v1";
+const CREATE_SCAN_REQUEST_TIMEOUT_MILLISECONDS = 15_000;
+const subscribeToHydration = () => () => undefined;
+const readHydratedSnapshot = () => true;
+const readServerSnapshot = () => false;
 
 const healthAreas = [
   "Search visibility",
@@ -15,21 +35,213 @@ const healthAreas = [
   "AI readiness",
 ];
 
-export function ScanEntryForm() {
+const createErrorCodesByStatus = new Map<
+  number,
+  ReadonlySet<PublicScanErrorCode>
+>([
+  [400, new Set(["INVALID_REQUEST", "INVALID_TARGET", "NON_PUBLIC_ADDRESS"])],
+  [413, new Set(["PAYLOAD_TOO_LARGE"])],
+  [415, new Set(["UNSUPPORTED_MEDIA_TYPE"])],
+  [
+    422,
+    new Set([
+      "DNS_LOOKUP_FAILED",
+      "DNS_LOOKUP_TIMEOUT",
+      "INVALID_DNS_ANSWER",
+      "NO_DNS_ANSWERS",
+      "TOO_MANY_DNS_ANSWERS",
+    ]),
+  ],
+  [429, new Set(["RATE_LIMITED"])],
+  [503, new Set(["SCANNING_UNAVAILABLE"])],
+]);
+
+async function readCreateError(response: Response) {
+  const error = decodePublicScanError(
+    await readBoundedJsonResponse(response, 16_384),
+  );
+
+  if (!createErrorCodesByStatus.get(response.status)?.has(error.code)) {
+    throw new PublicScanClientContractError();
+  }
+
+  return error;
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "AbortError"
+  );
+}
+
+export function ScanEntryForm({
+  liveScanningEnabled = false,
+}: Readonly<{ liveScanningEnabled?: boolean }>) {
+  const router = useRouter();
   const [value, setValue] = useState("");
   const [result, setResult] = useState<WebsiteUrlResult | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    readHydratedSnapshot,
+    readServerSnapshot,
+  );
+  const submittingRef = useRef(false);
+  const controllerRef = useRef<AbortController | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!liveScanningEnabled) return;
+
+    let cancelled = false;
+    let restoredOrigin: string | null = null;
+
+    try {
+      const stored = window.sessionStorage.getItem(LAST_NORMALIZED_ORIGIN_KEY);
+      if (stored) {
+        const normalized = normalizeWebsiteUrl(stored);
+        if (normalized.ok && normalized.url === stored) {
+          restoredOrigin = normalized.url;
+        } else {
+          window.sessionStorage.removeItem(LAST_NORMALIZED_ORIGIN_KEY);
+        }
+      }
+    } catch {
+      // Storage can be unavailable in private or hardened browsing modes. Back
+      // restoration is helpful, but never required to start a scan.
+    }
+
+    if (restoredOrigin) {
+      queueMicrotask(() => {
+        if (!cancelled) setValue(restoredOrigin);
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      controllerRef.current?.abort();
+    };
+  }, [liveScanningEnabled]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setResult(normalizeWebsiteUrl(value));
+
+    if (submittingRef.current) return;
+
+    const normalized = normalizeWebsiteUrl(value);
+    setResult(normalized);
+    setSubmissionError(null);
+
+    if (!normalized.ok || !liveScanningEnabled) return;
+
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    let requestTimedOut = false;
+    const timeout = window.setTimeout(() => {
+      requestTimedOut = true;
+      controller.abort();
+    }, CREATE_SCAN_REQUEST_TIMEOUT_MILLISECONDS);
+
+    try {
+      const response = await fetch("/api/scans", {
+        body: JSON.stringify({ url: normalized.url }),
+        cache: "no-store",
+        credentials: "omit",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        signal: controller.signal,
+      });
+
+      if (response.status !== 202) {
+        const publicError = await readCreateError(response);
+        setSubmissionError(publicError.message);
+        return;
+      }
+
+      const envelope = decodeCreateScanEnvelope(
+        await readBoundedJsonResponse(response),
+      );
+
+      if (
+        envelope.data.target.hostname !== normalized.hostname ||
+        envelope.data.target.origin !== normalized.url
+      ) {
+        throw new Error("The submitted scan identity changed.");
+      }
+
+      setValue(normalized.url);
+      setResult(null);
+
+      try {
+        window.sessionStorage.setItem(
+          LAST_NORMALIZED_ORIGIN_KEY,
+          normalized.url,
+        );
+      } catch {
+        // Navigation still works when storage is blocked.
+      }
+
+      router.push(`/scan#${envelope.data.scanId}`);
+    } catch (error) {
+      if (isAbortError(error)) {
+        if (requestTimedOut) {
+          setSubmissionError(
+            "SiteMend did not receive a response in time. The check may still have been queued; wait before trying again.",
+          );
+        }
+
+        return;
+      }
+
+      setSubmissionError(
+        error instanceof TypeError
+          ? "SiteMend could not reach the scanning service. The request outcome is unknown; check your connection before trying again."
+          : "SiteMend received an unreadable scan response. No result was opened; wait before trying again.",
+      );
+    } finally {
+      window.clearTimeout(timeout);
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+      }
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
   }
 
   const error = result && !result.ok ? result.message : undefined;
-  const accepted = result?.ok ? result : undefined;
+  const accepted = !liveScanningEnabled && result?.ok ? result : undefined;
+  const descriptionId = error
+    ? "website-error"
+    : submissionError
+      ? "website-submission-error"
+      : "website-help";
+  const submitLabel = !isHydrated
+    ? "Preparing secure check…"
+    : isSubmitting
+      ? "Starting health check…"
+      : liveScanningEnabled
+        ? "Start health check"
+        : "Check this address";
 
   return (
     <div className="scan-shell">
-      <form onSubmit={handleSubmit} noValidate>
+      <form
+        action="/api/scans"
+        aria-busy={!isHydrated || isSubmitting}
+        method="post"
+        onSubmit={handleSubmit}
+        noValidate
+      >
         <label
           className="mb-2 block px-1 text-sm font-bold text-ink"
           htmlFor="website"
@@ -39,17 +251,19 @@ export function ScanEntryForm() {
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="min-w-0 flex-1">
             <input
-              aria-describedby={error ? "website-error" : "website-help"}
+              aria-describedby={descriptionId}
               aria-invalid={Boolean(error)}
               autoCapitalize="none"
               autoComplete="url"
               className="website-field"
+              disabled={!isHydrated || isSubmitting}
               id="website"
               inputMode="url"
               name="website"
               onChange={(event) => {
                 setValue(event.target.value);
                 if (result) setResult(null);
+                if (submissionError) setSubmissionError(null);
               }}
               placeholder="example.com"
               spellCheck={false}
@@ -59,9 +273,10 @@ export function ScanEntryForm() {
           </div>
           <button
             className="primary-action scan-submit group"
+            disabled={!isHydrated || isSubmitting}
             type="submit"
           >
-            Check this address
+            {submitLabel}
             <span aria-hidden="true" className="action-arrow">
               →
             </span>
@@ -76,11 +291,27 @@ export function ScanEntryForm() {
           >
             {error}
           </p>
+        ) : submissionError ? (
+          <p
+            className="mt-3 px-1 text-sm font-bold text-danger"
+            id="website-submission-error"
+            role="alert"
+          >
+            {submissionError}
+          </p>
         ) : (
           <p className="mt-3 px-1 text-sm text-muted" id="website-help">
-            Enter a public domain. This step checks the address only.
+            {liveScanningEnabled
+              ? "Enter a public domain. Only its public origin is submitted."
+              : "Enter a public domain. This step checks the address only."}
           </p>
         )}
+        <noscript>
+          <p className="mt-3 px-1 text-sm font-bold text-danger">
+            JavaScript is required so SiteMend can remove paths, queries, and
+            fragments before submitting a public origin. No address was sent.
+          </p>
+        </noscript>
       </form>
 
       {accepted ? (

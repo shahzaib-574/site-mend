@@ -240,6 +240,12 @@ false percentage. If timing is unknown, use a determinate step list with an
 indeterminate current step. A failed scan preserves completed evidence, explains
 whether retrying is useful, and never reports unavailable data as a passing zero.
 
+Do not invent milestones the backend does not expose. The current public contract
+supports only `queued`, `running`, `completed`, and `failed`, so its progress view
+maps directly to those states and uses an indeterminate native progress element.
+Announce real state transitions rather than every poll. Pause background polling
+while the document is hidden or offline and keep the last trusted state visible.
+
 Every finding includes evidence, impact, effort, a practical fix, affected URLs,
 confidence, and a verification method. Raw scoring inputs belong in advanced
 details. Lab measurements and real-user field data are visibly separated.

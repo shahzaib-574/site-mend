@@ -29,7 +29,10 @@ npm run dev
 
 The feature-gated scan API also requires Redis and trusted reverse-proxy client
 identity. It stays disabled by default; see [the scan API guide](docs/api/scans.md)
-before configuring it.
+before configuring it. The public progress/results experience has its own
+server-only rollout gate and cannot enable intake by itself. Do not enable either
+public boundary until authorization-header redaction has been verified across the
+edge, application logs, tracing, APM, and support tooling.
 
 The homepage crawler is built and run as a separate Node.js service. It also
 stays disabled by default. Read the

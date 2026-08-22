@@ -44,6 +44,14 @@ publish a versioned, allowlisted homepage result containing only completion time
 the `fetched` or `blocked-by-robots` outcome, and the `homepage-v1` report. Queued,
 running, and failed states remain metadata-only.
 
+The public web experience is separately feature-gated. When both the server-only
+UI gate and intake gate are enabled, it submits only a normalized origin and
+renders queued, running, completed, failed, unavailable, offline, and removed
+states. The bearer scan ID travels in the `/scan` URL fragment, so the document
+request and referrer do not contain it. The browser derives the status endpoint
+from a strictly decoded ID, accepts only the allowlisted public contract, and
+never renders partial or unknown response data.
+
 ## Trust boundaries
 
 Submitted URLs and fetched responses are hostile. URL validation must happen
@@ -59,7 +67,7 @@ The queue producer stores no client identity, submitted path/query, DNS answer,
 credential, or content. Its abuse, privacy, and deployment controls are defined in
 [`security/scan-intake.md`](security/scan-intake.md).
 
-Public status URLs are anonymous, ephemeral bearer links rather than durable
+Public scan IDs are anonymous, ephemeral bearer capabilities rather than durable
 report storage or authenticated authorization. The API strictly decodes crawl
 evidence, recomputes the deterministic audit, verifies the worker copy, and then
 rebuilds completed results field by field. Unknown, contradictory, or malformed
@@ -68,6 +76,14 @@ BullMQ `returnvalue` directly, crawl transport fields, HTML, hashes, headers,
 failure details, page-authored text excerpts, non-public canonical targets, or
 scores. BullMQ's age/count removal is lazy, so configured retention windows are
 not hard TTLs.
+
+The `/scan` document is no-store, no-referrer, noindex, frame-denied, and free of
+ads, analytics, pixels, and external report resources. Client polling is
+single-flight, abortable, visibility/network aware, and bounded. Status reads use
+a fixed API path and carry the capability only in an authorization header that
+the edge and observability stack must demonstrably redact. The raw URL
+entry is normalized before transmission; its path, query, and fragment are not
+stored in the UI, navigation, or request body.
 
 Browser workers are isolated from application credentials and the private network,
 with CPU, memory, wall-clock, redirect, request, and response limits. Deep or

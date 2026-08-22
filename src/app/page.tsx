@@ -1,48 +1,56 @@
+import { connection } from "next/server";
+
 import { ScanEntryForm } from "@/components/scan-entry-form";
 import { product } from "@/lib/product";
+import { isPublicScanUiEnabled } from "@/server/public-scan-ui-config";
 
 const healthAreas = [
   {
     number: "01",
-    eyebrow: "SEO",
-    title: "Search and indexing",
+    eyebrow: "Technical",
+    status: "Available now",
+    title: "Homepage access",
     description:
-      "Status, HTTPS, redirects, robots access, canonicals, and indexing directives.",
+      "Status, HTTPS, robots access, and redirect evidence from one bounded homepage crawl.",
   },
   {
     number: "02",
-    eyebrow: "Experience",
-    title: "Speed and usability",
+    eyebrow: "SEO",
+    status: "Available now",
+    title: "Search essentials",
     description:
-      "Loading, interaction, and layout evidence translated into a practical next step.",
+      "Title, description, canonical URL, and indexing directives explained in plain language.",
   },
   {
     number: "03",
-    eyebrow: "Technical",
-    title: "Site reliability",
+    eyebrow: "Content",
+    status: "Available now",
+    title: "Heading structure",
     description:
-      "Broken responses, redirect paths, crawl access, and the signals that keep pages dependable.",
+      "Homepage H1 usage and heading hierarchy checked with deterministic evidence.",
   },
   {
     number: "04",
-    eyebrow: "Content",
-    title: "Page structure",
+    eyebrow: "Experience",
+    status: "Planned",
+    title: "Speed and usability",
     description:
-      "Titles, descriptions, headings, and content hierarchy checked in plain language.",
+      "Core Web Vitals, loading, interaction, and layout evidence are on the roadmap.",
   },
   {
     number: "05",
     eyebrow: "AEO + GEO",
+    status: "Planned",
     title: "AI answer readiness",
     description:
-      "Access, identity, structure, and evidence—without imaginary AI rankings or guarantees.",
+      "AI crawler access and citation readiness are planned without imaginary rankings or guarantees.",
   },
 ];
 
 const steps = [
   {
     title: "Scan",
-    description: "Collect repeatable evidence from the pages you choose.",
+    description: "Collect repeatable evidence from one public homepage.",
   },
   {
     title: "Understand",
@@ -58,7 +66,7 @@ const steps = [
   },
   {
     title: "Monitor",
-    description: "Catch important regressions before visitors or search engines do.",
+    description: "Planned: catch important regressions with scheduled checks.",
   },
 ];
 
@@ -80,7 +88,9 @@ const principles = [
   },
 ];
 
-export default function Home() {
+export function HomePage({
+  liveScanningEnabled = false,
+}: Readonly<{ liveScanningEnabled?: boolean }>) {
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -88,7 +98,7 @@ export default function Home() {
       </a>
 
       <header className="border-b border-line/80" id="top">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-8 lg:px-10">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-stretch gap-2 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:px-8 lg:px-10">
           <a
             aria-label={`${product.name} home`}
             className="inline-flex min-h-12 w-fit items-center gap-3 rounded-xl font-extrabold tracking-[-0.03em] text-ink"
@@ -102,21 +112,21 @@ export default function Home() {
 
           <nav
             aria-label="Primary navigation"
-            className="flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto"
+            className="grid w-full grid-cols-3 items-center gap-1 sm:ml-auto sm:flex sm:w-auto"
           >
-            <a className="nav-link" href="#how-it-works">
+            <a className="nav-link justify-center text-center" href="#how-it-works">
               How it works
             </a>
-            <a className="nav-link" href="#what-we-check">
+            <a className="nav-link justify-center text-center" href="#what-we-check">
               What we check
             </a>
-            <a className="nav-link" href="#why-sitemend">
+            <a className="nav-link justify-center text-center" href="#why-sitemend">
               Why SiteMend
             </a>
           </nav>
 
-          <a className="primary-action min-h-12 sm:ml-2" href="#website-check">
-            Check a site
+          <a className="primary-action min-h-12 w-full justify-center sm:ml-2 sm:w-auto" href="#website-check">
+            Check a homepage
             <span aria-hidden="true" className="action-arrow">
               ↓
             </span>
@@ -135,16 +145,18 @@ export default function Home() {
               className="hero-title mt-6 max-w-3xl text-balance font-black leading-[0.96] tracking-[-0.055em] text-ink"
               id="hero-title"
             >
-              Find what hurts your site.
+              Find what hurts your homepage.
               <span className="mt-2 block text-accent">Know what to fix next.</span>
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-muted sm:text-xl">
-              One calm health check for SEO, speed, technical quality, content,
-              AEO, and GEO—organized around evidence instead of jargon.
+              This release checks one public homepage for status, HTTPS, robots
+              access, redirects, title, description, canonical, headings, and
+              indexing directives. Speed, multi-page crawling, AEO, and GEO are
+              clearly marked as planned.
             </p>
 
             <div className="mt-9 max-w-2xl scroll-mt-6" id="website-check">
-              <ScanEntryForm />
+              <ScanEntryForm liveScanningEnabled={liveScanningEnabled} />
             </div>
 
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-muted">
@@ -227,10 +239,11 @@ export default function Home() {
           <div className="max-w-2xl">
             <p className="section-kicker">One simple loop</p>
             <h2 className="section-title" id="workflow-title">
-              From “something feels wrong” to “it stays fixed.”
+              From “something feels wrong” to a focused homepage fix.
             </h2>
             <p className="section-copy">
-              Each stage answers one question and leads naturally to the next.
+              Scan, understand, fix, and manually verify are available now.
+              Scheduled monitoring is planned.
             </p>
           </div>
 
@@ -263,8 +276,8 @@ export default function Home() {
               </h2>
             </div>
             <p className="section-copy lg:justify-self-end">
-              SiteMend groups related evidence so you can understand the whole
-              website without switching between specialist tools.
+              Today&apos;s report explains one homepage. Roadmap areas are labelled
+              so planned coverage never looks like live evidence.
             </p>
           </div>
 
@@ -274,10 +287,13 @@ export default function Home() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="step-number">{area.number}</span>
                   <span className="rounded-full border border-accent/30 bg-accent/8 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] text-accent">
-                    {area.eyebrow}
+                    {area.status}
                   </span>
                 </div>
-                <h3 className="mt-7 text-lg font-black tracking-[-0.02em] text-ink">
+                <p className="mt-4 text-xs font-black uppercase tracking-[0.1em] text-accent">
+                  {area.eyebrow}
+                </p>
+                <h3 className="mt-2 text-lg font-black tracking-[-0.02em] text-ink">
                   {area.title}
                 </h3>
                 <p className="mt-3 text-sm leading-6 text-muted">{area.description}</p>
@@ -302,7 +318,7 @@ export default function Home() {
                 deterministic checks, explicit evidence, and honest limitations.
               </p>
               <a className="secondary-action mt-7" href="#website-check">
-                Preview your site address
+                {liveScanningEnabled ? "Start a health check" : "Preview your site address"}
                 <span aria-hidden="true" className="action-arrow">
                   ↑
                 </span>
@@ -355,4 +371,10 @@ export default function Home() {
       </footer>
     </>
   );
+}
+
+export default async function Home() {
+  await connection();
+
+  return <HomePage liveScanningEnabled={isPublicScanUiEnabled()} />;
 }
