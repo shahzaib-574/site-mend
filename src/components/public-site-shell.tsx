@@ -22,10 +22,10 @@ export function PublicHeader() {
       </a>
 
       <header className="public-header border-b border-line/80" id="top">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-stretch gap-2 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:px-8 lg:px-10">
+        <div className="public-header-inner">
           <HardDocumentLink
             ariaLabel={`${product.name} home`}
-            className="inline-flex min-h-12 w-fit items-center gap-3 rounded-xl font-extrabold tracking-[-0.03em] text-ink"
+            className="public-brand-link"
             href="/"
           >
             <span aria-hidden="true" className="brand-mark">
@@ -36,11 +36,11 @@ export function PublicHeader() {
 
           <nav
             aria-label="Primary navigation"
-            className="flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto"
+            className="desktop-nav"
           >
             {primaryLinks.map((link) => (
               <HardDocumentLink
-                className="nav-link grow basis-32 justify-center text-center sm:grow-0 sm:basis-auto"
+                className="nav-link"
                 href={link.href}
                 key={link.href}
               >
@@ -50,14 +50,32 @@ export function PublicHeader() {
           </nav>
 
           <HardDocumentLink
-            className="primary-action min-h-12 w-full justify-center sm:ml-2 sm:w-auto"
+            ariaLabel="Check an address"
+            className="primary-action header-scan-action"
             href="/#website-check"
           >
-            Check an address
+            <span className="header-scan-label-full">Check an address</span>
+            <span aria-hidden="true" className="header-scan-label-short">
+              Check
+            </span>
             <span aria-hidden="true" className="action-arrow">
               ↓
             </span>
           </HardDocumentLink>
+
+          <details className="mobile-nav">
+            <summary className="mobile-nav-toggle">
+              <span aria-hidden="true">☰</span>
+              <span className="sr-only">Navigation menu</span>
+            </summary>
+            <nav aria-label="Mobile navigation" className="mobile-nav-panel">
+              {primaryLinks.map((link) => (
+                <HardDocumentLink className="nav-link" href={link.href} key={link.href}>
+                  {link.label}
+                </HardDocumentLink>
+              ))}
+            </nav>
+          </details>
         </div>
       </header>
     </>

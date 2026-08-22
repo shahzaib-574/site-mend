@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   PUBLIC_HOMEPAGE_RULES,
@@ -118,7 +118,7 @@ function makeRecord(
     status: "completed",
     target: options.target ?? {
       hostname: "example.com",
-      origin: "https://example.com",
+      origin: "https://example.com/",
     },
   };
 }
@@ -172,6 +172,11 @@ const manyFindingSpecs: ReadonlyArray<FindingSpec> = [
 ];
 
 describe("PublicScanResults", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    window.sessionStorage.clear();
+  });
+
   it("shows target, outcome, timestamps, honest scope, counts, and all checks", async () => {
     const user = userEvent.setup();
     const record = makeRecord({ findingSpecs: manyFindingSpecs });
@@ -180,7 +185,11 @@ describe("PublicScanResults", () => {
     expect(
       screen.getByRole("heading", { name: "Results for example.com" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("https://example.com")).toBeInTheDocument();
+    const reportHeader = screen
+      .getByRole("heading", { name: "Results for example.com" })
+      .closest("header");
+    expect(reportHeader).not.toBeNull();
+    expect(within(reportHeader!).getByText("https://example.com/")).toBeInTheDocument();
     expect(screen.getByText("Homepage fetched")).toBeInTheDocument();
     expect(screen.getAllByText(/Aug 21, 2026/)).toHaveLength(2);
     expect(
@@ -205,6 +214,31 @@ describe("PublicScanResults", () => {
     expect(
       within(allChecks).getAllByText("View check evidence")[0],
     ).toHaveTextContent(/for Homepage response/i);
+  });
+
+  it("offers a prefilled manual rerun without requesting or exposing the old capability", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    window.sessionStorage.setItem(
+      "sitemend:last-normalized-origin:v1",
+      "https://stored.example/",
+    );
+    const record = makeRecord();
+
+    render(<PublicScanResults record={record} />);
+
+    expect(
+      screen.getByRole("heading", { name: /verify your fixes with fresh evidence/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/website to check again/i)).toHaveValue(
+      record.target.origin,
+    );
+    expect(
+      screen.getByRole("button", { name: /check this website again/i }),
+    ).toBeEnabled();
+    expect(screen.getByText(/does not overwrite this one/i)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.body).not.toHaveTextContent(record.scanId);
   });
 
   it("orders the first five findings by priority and keeps every remaining finding reachable", async () => {
@@ -269,8 +303,14 @@ describe("PublicScanResults", () => {
     };
     render(<PublicScanResults record={makeRecord({ findingSpecs: [spec] })} />);
 
-    await user.tab();
     const disclosure = screen.getByText("View fix, evidence, and verification");
+    await user.tab();
+    expect(screen.getByLabelText(/website to check again/i)).toHaveFocus();
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: /check this website again/i }),
+    ).toHaveFocus();
+    await user.tab();
     expect(disclosure).toHaveFocus();
     expect(disclosure.tagName).toBe("SUMMARY");
 

@@ -53,6 +53,9 @@ describe("Home", () => {
     render(<HomePage />);
 
     const navigation = screen.getByRole("navigation", { name: /primary navigation/i });
+    const mobileNavigation = screen.getByRole("navigation", {
+      name: /mobile navigation/i,
+    });
     const expectedLinks = [
       ["How it works", "/#how-it-works"],
       ["What we check", "/#what-we-check"],
@@ -61,8 +64,16 @@ describe("Home", () => {
 
     for (const [name, href] of expectedLinks) {
       expect(within(navigation).getByRole("link", { name })).toHaveAttribute("href", href);
+      expect(within(mobileNavigation).getByRole("link", { name })).toHaveAttribute(
+        "href",
+        href,
+      );
       expect(document.querySelector(new URL(href, "https://sitemend.test").hash)).toBeInTheDocument();
     }
+
+    expect(screen.getByText("Navigation menu").closest("summary")).toHaveClass(
+      "mobile-nav-toggle",
+    );
 
     expect(
       within(screen.getByRole("banner"))
@@ -74,6 +85,9 @@ describe("Home", () => {
       "/#what-we-check",
       "/#why-sitemend",
       "/#website-check",
+      "/#how-it-works",
+      "/#what-we-check",
+      "/#why-sitemend",
     ]);
     expect(
       within(screen.getByRole("banner"))
@@ -99,10 +113,17 @@ describe("Home", () => {
     }
   });
 
-  it("states the bounded live scope before submission and labels roadmap work", () => {
+  it("puts the primary check before the detailed scope while keeping every limit explicit", () => {
     render(<HomePage liveScanningEnabled />);
 
-    expect(screen.getByText(/this release checks one public homepage/i)).toHaveTextContent(
+    const scope = screen.getByText(/this release checks one public homepage/i);
+    const form = screen.getByLabelText(/website address/i).closest("form");
+
+    expect(form).not.toBeNull();
+    expect(
+      form!.compareDocumentPosition(scope) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(scope).toHaveTextContent(
       /status, HTTPS, robots access, redirects, title, description, canonical, headings, and indexing directives/i,
     );
     expect(screen.getByText(/speed, multi-page crawling, AEO, and GEO/i)).toHaveTextContent(

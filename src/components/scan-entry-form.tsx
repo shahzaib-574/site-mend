@@ -26,10 +26,20 @@ const subscribeToHydration = () => () => undefined;
 const readHydratedSnapshot = () => true;
 const readServerSnapshot = () => false;
 
-type ScanEntryFormProps = Readonly<{
+type CommonScanEntryFormProps = Readonly<{
   liveScanningEnabled?: boolean;
   navigateToDocument?: (target: string) => void;
 }>;
+
+type ScanEntryFormProps = CommonScanEntryFormProps &
+  Readonly<
+    | { mode?: "start" }
+    | {
+        initialOrigin: string;
+        mode: "rescan";
+        previousScanId: string;
+      }
+  >;
 
 export function hardNavigateToDocument(
   target: string,
@@ -88,11 +98,27 @@ function isAbortError(error: unknown): boolean {
   );
 }
 
-export function ScanEntryForm({
-  liveScanningEnabled = false,
-  navigateToDocument = hardNavigateToDocument,
-}: ScanEntryFormProps) {
-  const [value, setValue] = useState("");
+export function ScanEntryForm(props: ScanEntryFormProps) {
+  const {
+    liveScanningEnabled = false,
+    navigateToDocument = hardNavigateToDocument,
+  } = props;
+  const isRescan = props.mode === "rescan";
+  let trustedInitialOrigin: string | null = null;
+
+  if (props.mode === "rescan") {
+    const normalizedInitialOrigin = normalizeWebsiteUrl(props.initialOrigin);
+
+    if (
+      normalizedInitialOrigin.ok &&
+      normalizedInitialOrigin.url === props.initialOrigin
+    ) {
+      trustedInitialOrigin = normalizedInitialOrigin.url;
+    }
+  }
+  const hasTrustedRescanIdentity = !isRescan || trustedInitialOrigin !== null;
+  const fieldId = isRescan ? "report-website" : "website";
+  const [value, setValue] = useState(() => trustedInitialOrigin ?? "");
   const [result, setResult] = useState<WebsiteUrlResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
@@ -105,7 +131,11 @@ export function ScanEntryForm({
   const controllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!liveScanningEnabled) return;
+    return () => controllerRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!liveScanningEnabled || isRescan) return;
 
     let cancelled = false;
     let restoredOrigin: string | null = null;
@@ -133,9 +163,8 @@ export function ScanEntryForm({
 
     return () => {
       cancelled = true;
-      controllerRef.current?.abort();
     };
-  }, [liveScanningEnabled]);
+  }, [isRescan, liveScanningEnabled]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -146,7 +175,13 @@ export function ScanEntryForm({
     setResult(normalized);
     setSubmissionError(null);
 
-    if (!normalized.ok || !liveScanningEnabled) return;
+    if (
+      !normalized.ok ||
+      !liveScanningEnabled ||
+      !hasTrustedRescanIdentity
+    ) {
+      return;
+    }
 
     submittingRef.current = true;
     setIsSubmitting(true);
@@ -185,7 +220,8 @@ export function ScanEntryForm({
 
       if (
         envelope.data.target.hostname !== normalized.hostname ||
-        envelope.data.target.origin !== normalized.url
+        envelope.data.target.origin !== normalized.url ||
+        (isRescan && envelope.data.scanId === props.previousScanId)
       ) {
         throw new Error("The submitted scan identity changed.");
       }
@@ -231,15 +267,25 @@ export function ScanEntryForm({
 
   const error = result && !result.ok ? result.message : undefined;
   const accepted = !liveScanningEnabled && result?.ok ? result : undefined;
+  const rescanIdentityError =
+    isRescan && !hasTrustedRescanIdentity
+      ? "SiteMend could not verify this report’s website identity. Return home to start a new check."
+      : null;
   const descriptionId = error
-    ? "website-error"
+    ? `${fieldId}-error`
     : submissionError
-      ? "website-submission-error"
-      : "website-help";
+      ? `${fieldId}-submission-error`
+      : rescanIdentityError
+        ? `${fieldId}-identity-error`
+        : `${fieldId}-help`;
   const submitLabel = !isHydrated
     ? "Preparing secure check…"
     : isSubmitting
-      ? "Starting health check…"
+      ? isRescan
+        ? "Starting another check…"
+        : "Starting health check…"
+      : isRescan
+        ? "Check this website again"
       : liveScanningEnabled
         ? "Start health check"
         : "Check this address";
@@ -255,9 +301,9 @@ export function ScanEntryForm({
       >
         <label
           className="mb-2 block px-1 text-sm font-bold text-ink"
-          htmlFor="website"
+          htmlFor={fieldId}
         >
-          Your website address
+          {isRescan ? "Website to check again" : "Your website address"}
         </label>
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="min-w-0 flex-1">
@@ -267,8 +313,10 @@ export function ScanEntryForm({
               autoCapitalize="none"
               autoComplete="url"
               className="website-field"
-              disabled={!isHydrated || isSubmitting}
-              id="website"
+              disabled={
+                !isHydrated || isSubmitting || !hasTrustedRescanIdentity
+              }
+              id={fieldId}
               inputMode="url"
               name="website"
               onChange={(event) => {
@@ -284,7 +332,9 @@ export function ScanEntryForm({
           </div>
           <button
             className="primary-action scan-submit group"
-            disabled={!isHydrated || isSubmitting}
+            disabled={
+              !isHydrated || isSubmitting || !hasTrustedRescanIdentity
+            }
             type="submit"
           >
             {submitLabel}
@@ -297,7 +347,7 @@ export function ScanEntryForm({
         {error ? (
           <p
             className="mt-3 px-1 text-sm font-bold text-danger"
-            id="website-error"
+            id={`${fieldId}-error`}
             role="alert"
           >
             {error}
@@ -305,16 +355,26 @@ export function ScanEntryForm({
         ) : submissionError ? (
           <p
             className="mt-3 px-1 text-sm font-bold text-danger"
-            id="website-submission-error"
+            id={`${fieldId}-submission-error`}
             role="alert"
           >
             {submissionError}
           </p>
+        ) : rescanIdentityError ? (
+          <p
+            className="mt-3 px-1 text-sm font-bold text-danger"
+            id={`${fieldId}-identity-error`}
+            role="alert"
+          >
+            {rescanIdentityError}
+          </p>
         ) : (
-          <p className="mt-3 px-1 text-sm text-muted" id="website-help">
-            {liveScanningEnabled
-              ? "Enter a public domain. Only its public origin is submitted."
-              : "Enter a public domain. This step checks the address only."}
+          <p className="mt-3 px-1 text-sm text-muted" id={`${fieldId}-help`}>
+            {isRescan
+              ? "Reruns the same nine public-homepage checks and opens a new temporary report. Speed, multi-page crawling, AEO, and GEO remain outside this release."
+              : liveScanningEnabled
+                ? "Enter a public domain. Only its public origin is submitted."
+                : "Enter a public domain. This step checks the address only."}
           </p>
         )}
         <noscript>

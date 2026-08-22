@@ -178,6 +178,144 @@ describe("ScanEntryForm", () => {
     expect(document.body).not.toHaveTextContent("secret");
   });
 
+  it("prefills a rescan from the trusted report origin without reading storage or fetching", async () => {
+    const previousScanId = "scan-22222222-2222-4222-8222-222222222222";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    window.sessionStorage.setItem(
+      "sitemend:last-normalized-origin:v1",
+      "https://stored.example/",
+    );
+
+    render(
+      <ScanEntryForm
+        initialOrigin="https://example.com/"
+        liveScanningEnabled
+        mode="rescan"
+        navigateToDocument={navigateToDocumentMock}
+        previousScanId={previousScanId}
+      />,
+    );
+
+    expect(screen.getByLabelText(/website to check again/i)).toHaveValue(
+      "https://example.com/",
+    );
+    expect(
+      screen.getByRole("button", { name: /check this website again/i }),
+    ).toBeEnabled();
+    expect(screen.getByText(/same nine public-homepage checks/i)).toHaveTextContent(
+      /speed, multi-page crawling, AEO, and GEO remain outside/i,
+    );
+    expect(window.sessionStorage.getItem("sitemend:last-normalized-origin:v1")).toBe(
+      "https://stored.example/",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.body).not.toHaveTextContent(previousScanId);
+  });
+
+  it("reuses the hardened POST path for a rescan and opens only a new bearer target", async () => {
+    const previousScanId = "scan-22222222-2222-4222-8222-222222222222";
+    const fetchMock = vi.fn(async () => acceptedResponse());
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+
+    render(
+      <ScanEntryForm
+        initialOrigin="https://example.com/"
+        liveScanningEnabled
+        mode="rescan"
+        navigateToDocument={navigateToDocumentMock}
+        previousScanId={previousScanId}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /check this website again/i }),
+    );
+
+    await waitFor(() =>
+      expect(navigateToDocumentMock).toHaveBeenCalledWith(`/scan#${scanId}`),
+    );
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/scans",
+      expect.objectContaining({
+        body: JSON.stringify({ url: "https://example.com/" }),
+        cache: "no-store",
+        credentials: "omit",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(previousScanId);
+    expect(document.body).not.toHaveTextContent(previousScanId);
+  });
+
+  it("rejects a rescan response that reuses the previous bearer capability", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => acceptedResponse()));
+    const user = userEvent.setup();
+
+    render(
+      <ScanEntryForm
+        initialOrigin="https://example.com/"
+        liveScanningEnabled
+        mode="rescan"
+        navigateToDocument={navigateToDocumentMock}
+        previousScanId={scanId}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /check this website again/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /unreadable scan response/i,
+    );
+    expect(navigateToDocumentMock).not.toHaveBeenCalled();
+    expect(
+      window.sessionStorage.getItem("sitemend:last-normalized-origin:v1"),
+    ).toBeNull();
+  });
+
+  it("fails a non-normalized rescan identity closed without exposing or submitting it", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    window.sessionStorage.setItem(
+      "sitemend:last-normalized-origin:v1",
+      "https://stored.example/",
+    );
+
+    render(
+      <ScanEntryForm
+        initialOrigin="https://example.com/private?token=secret"
+        liveScanningEnabled
+        mode="rescan"
+        navigateToDocument={navigateToDocumentMock}
+        previousScanId="scan-22222222-2222-4222-8222-222222222222"
+      />,
+    );
+
+    expect(screen.getByLabelText(/website to check again/i)).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /check this website again/i }),
+    ).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /could not verify this report’s website identity/i,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.body).not.toHaveTextContent(/token|secret/i);
+    expect(window.sessionStorage.getItem("sitemend:last-normalized-origin:v1")).toBe(
+      "https://stored.example/",
+    );
+  });
+
   it("does not navigate when a 202 response contains an unverified scan ID", async () => {
     vi.stubGlobal(
       "fetch",
