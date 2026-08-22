@@ -12,14 +12,15 @@ import type {
   IndexDirective,
   IndexDirectiveSourceEvidence,
 } from "./types";
+import { HOMEPAGE_EVIDENCE_LIMITS } from "./types";
 
-const MAX_CANONICALS = 10;
-const MAX_CANONICAL_URL_LENGTH = 2_048;
-const MAX_DESCRIPTION_LENGTH = 500;
-const MAX_HEADINGS = 20;
-const MAX_HEADING_LENGTH = 200;
-const MAX_INDEX_SOURCES = 20;
-const MAX_TITLE_LENGTH = 300;
+const MAX_CANONICALS = HOMEPAGE_EVIDENCE_LIMITS.canonicals;
+const MAX_CANONICAL_URL_LENGTH = HOMEPAGE_EVIDENCE_LIMITS.canonicalUrlLength;
+const MAX_DESCRIPTION_LENGTH = HOMEPAGE_EVIDENCE_LIMITS.descriptionLength;
+const MAX_HEADINGS = HOMEPAGE_EVIDENCE_LIMITS.headings;
+const MAX_HEADING_LENGTH = HOMEPAGE_EVIDENCE_LIMITS.headingLength;
+const MAX_INDEX_SOURCES = HOMEPAGE_EVIDENCE_LIMITS.indexingSources;
+const MAX_TITLE_LENGTH = HOMEPAGE_EVIDENCE_LIMITS.titleLength;
 
 const COLON_DIRECTIVES = new Set([
   "max-image-preview",

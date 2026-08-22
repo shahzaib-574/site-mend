@@ -4,7 +4,7 @@ import {
   parseScanJobPayload,
   SCAN_JOB_NAME,
   type ScanJobPayload,
-} from "../server/scan-jobs/scan-queue";
+} from "../lib/scan-job-contract";
 import { abortable, createCrawlSignal } from "./crawler/crawl-budget";
 import { CrawlerError } from "./crawler/errors";
 import {

@@ -2,6 +2,16 @@ import type { RedirectEvidence } from "../../worker/crawler/url-evidence";
 
 export const HOMEPAGE_AUDIT_RULESET_VERSION = "homepage-v1" as const;
 
+export const HOMEPAGE_EVIDENCE_LIMITS = {
+  canonicals: 10,
+  canonicalUrlLength: 2_048,
+  descriptionLength: 500,
+  headings: 20,
+  headingLength: 200,
+  indexingSources: 20,
+  titleLength: 300,
+} as const;
+
 export type HomepageRuleId =
   | "CONTENT-HEADINGS-001"
   | "SEARCH-CANONICAL-001"

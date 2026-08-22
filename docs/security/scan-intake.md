@@ -38,9 +38,43 @@ origin, and hostname. Status reads validate the complete stored shape and rebuil
 the public response field by field. Unexpected fields, mismatched scan IDs,
 malformed origins, and corrupt timestamps fail closed instead of being returned.
 
-The queue stores no client IP or its digest, submitted path/query/fragment, DNS
-answer, cookie, authorization header, credential, or fetched content. Queue and
-Redis errors are not exposed to clients.
+The enqueued request payload stores no client IP or its digest, submitted
+path/query/fragment, DNS answer, cookie, authorization header, credential, or
+fetched content. A completed worker return value can contain the bounded internal
+crawl evidence documented in `crawler-worker.md`; it is not itself the public
+contract. Queue and Redis errors are not exposed to clients.
+
+Queued, running, and failed statuses expose metadata only. A completed status can
+add exactly one versioned result with `schemaVersion: 1`, a bounded ISO completion
+timestamp, a `fetched` or `blocked-by-robots` outcome, and the allowlisted
+`homepage-v1` audit report. That report contains exactly the nine known checks and
+findings attributable to failed checks. It contains no score.
+
+The status boundary does not serialize BullMQ `returnvalue` directly. It strictly
+decodes the real crawler evidence, recomputes the deterministic report in trusted
+server code, verifies that the worker report matches, and then creates a separate
+public copy. Raw crawl transport fields, HTML, body hashes, headers, failure
+reasons, stack traces, Redis errors, and unknown worker fields stay private.
+Page-authored title and description excerpts are omitted, and non-public canonical
+targets receive a fixed withholding label. Unknown, contradictory, or malformed
+completed results fail closed with a generic `503`; they are never downgraded to
+an empty or partially trusted report. Unknown or removed jobs and invalid scan IDs
+continue to share the generic `404` response. The final public result has a
+256 KiB serialized ceiling derived above the reviewed `homepage-v1` producer
+maximum.
+
+The unguessable status URL is a bearer capability, not authentication. Anyone who
+receives it can read its public scan metadata and completed report until BullMQ
+removes the job. Responses remain `no-store`; application logs, analytics,
+referrers, support tooling, and UI copy must not leak full bearer URLs. Durable
+history, ownership, revocation, and access control require the future authenticated
+project store.
+
+Completed and failed job removal uses BullMQ age and count settings. Cleanup is
+triggered lazily by later job completions rather than by an exact expiry timer:
+an active queue can remove a result because of its count limit, while an idle
+queue can retain it beyond the configured age. Neither the one-day completed age
+nor seven-day failed age is a hard at-most TTL.
 
 ## Deployment gate
 

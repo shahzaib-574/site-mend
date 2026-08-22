@@ -67,6 +67,27 @@ elsewhere is medium-confidence guidance because cross-page canonicalization can 
 intentional. Title, description, and canonical tags placed after an explicit body
 start are not credited; robots meta directives remain effective in the body.
 
+## Public homepage result
+
+A completed public status exposes the report only inside this allowlisted,
+versioned result envelope:
+
+```text
+{ schemaVersion: 1, completedAt, outcome, report }
+```
+
+`outcome` is `fetched` or `blocked-by-robots`. `report` is a schema-version `1`,
+`homepage-v1` report with exactly the nine checks above and findings that
+correspond to failed checks. Queued, running, and failed statuses expose no
+report. The contract deliberately excludes scores and all internal crawl
+transport evidence, including raw HTML, body hashes, response headers, redirect
+request internals, and BullMQ failure or return-value fields. Unknown or malformed
+completed results fail closed rather than publishing a partial report.
+The API recomputes the report from strictly decoded crawler evidence and verifies
+the worker copy before publication. Public evidence omits page-authored title and
+description excerpts and replaces non-public canonical targets with a fixed
+withholding label.
+
 ## Scan admission gate
 
 Audit rules never run for a target that fails server-side scan admission. The gate
@@ -86,5 +107,7 @@ The standalone worker produces schema-version `2` crawl results with robots
 access, final status, sanitized redirect locations, accepted media type, response
 bytes, a SHA-256 body digest, bounded structured homepage evidence, and the
 `homepage-v1` audit report. It never returns the robots file or raw homepage body.
-The first rules create findings but do not calculate or change a health score. See
-[`security/crawler-worker.md`](security/crawler-worker.md).
+These fields are the worker's internal evidence contract, not the public status
+contract. The status API rebuilds and returns only the public homepage result
+defined above. The first rules create findings but do not calculate or change a
+health score. See [`security/crawler-worker.md`](security/crawler-worker.md).

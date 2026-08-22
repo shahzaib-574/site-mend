@@ -2,7 +2,7 @@ import {
   admitRedirectTarget,
   admitScanTarget,
 } from "../../server/scan-admission";
-import type { ScanJobPayload } from "../../server/scan-jobs/scan-queue";
+import type { ScanJobPayload } from "../../lib/scan-job-contract";
 import { auditHomepage } from "../../audit/homepage/audit-homepage";
 import { HomepageEvidenceParser } from "../../audit/homepage/homepage-evidence-parser";
 import type {
