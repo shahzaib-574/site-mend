@@ -85,6 +85,9 @@ describe("public information pages", () => {
         "/#what-we-check",
         "/#why-sitemend",
         "/#website-check",
+        "/#how-it-works",
+        "/#what-we-check",
+        "/#why-sitemend",
       ]);
       expect(
         within(screen.getByRole("banner"))
