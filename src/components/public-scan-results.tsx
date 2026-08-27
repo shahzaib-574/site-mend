@@ -1,3 +1,4 @@
+import { ScanEntryForm } from "@/components/scan-entry-form";
 import {
   type PublicAuditCategory,
   type PublicAuditPriority,
@@ -380,6 +381,29 @@ export function PublicScanResults({ record }: PublicScanResultsProps) {
             : "robots.txt stopped SiteMend before the homepage HTML was fetched. Checks that needed that HTML are marked Not checked."}
         </p>
       </header>
+
+      <section aria-labelledby={`${headingId}-verify`} className="mt-8">
+        <p className="section-kicker">Fix → verify</p>
+        <h2
+          className="mt-2 text-2xl font-black tracking-[-0.03em] text-ink"
+          id={`${headingId}-verify`}
+        >
+          Verify your fixes with fresh evidence
+        </h2>
+        <p className="mt-2 max-w-3xl leading-7 text-muted">
+          Check this website again to rerun the same nine homepage rules. SiteMend
+          creates a new temporary report; it does not overwrite this one.
+        </p>
+        <div className="mt-5 max-w-3xl">
+          <ScanEntryForm
+            initialOrigin={record.target.origin}
+            key={record.scanId}
+            liveScanningEnabled
+            mode="rescan"
+            previousScanId={record.scanId}
+          />
+        </div>
+      </section>
 
       <section aria-labelledby={`${headingId}-scope`} className="mt-8">
         <h2 className="text-xl font-black text-ink" id={`${headingId}-scope`}>

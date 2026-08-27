@@ -126,16 +126,16 @@ export function HomePage({
               Find what hurts your homepage.
               <span className="mt-2 block text-accent">Know what to fix next.</span>
             </h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-muted sm:text-xl">
+            <div className="hero-scan max-w-2xl" id="website-check">
+              <ScanEntryForm liveScanningEnabled={liveScanningEnabled} />
+            </div>
+
+            <p className="hero-scope max-w-2xl">
               This release checks one public homepage for status, HTTPS, robots
               access, redirects, title, description, canonical, headings, and
               indexing directives. Speed, multi-page crawling, AEO, and GEO are
               clearly marked as planned.
             </p>
-
-            <div className="mt-9 max-w-2xl scroll-mt-6" id="website-check">
-              <ScanEntryForm liveScanningEnabled={liveScanningEnabled} />
-            </div>
 
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-muted">
               {["No signup to begin", "Plain-language guidance", "Read-only checks"].map(
